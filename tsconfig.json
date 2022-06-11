@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "baseUrl": "./",
+        "outDir": "./build",
+        "sourceMap": true,
+        "declaration": true,
+        "module": "commonjs",
+        "moduleResolution": "Node",
+        "emitDecoratorMetadata": false,
+        "experimentalDecorators": false,
+        "importHelpers": true,
+        "target": "esnext",
+        "lib": ["ESNext"],
+        "types": ["node"]
+    }
+}

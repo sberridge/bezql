@@ -1,0 +1,59 @@
+import Comparator from "../types/Comparator";
+import SQLResult from "../classes/SQLResult";
+import WeightedCondition from "./../drivers/MySQL/classes/WeightedCondition";
+import QueryConstraints from "./../drivers/MySQL/classes/QueryConstraints";
+import Order from "./../types/Order";
+
+interface pSQL {
+
+    newQuery():pSQL
+
+    table(tableName : pSQL, tableAlias : string) : pSQL
+    cols(columns : string[]) : pSQL
+    table(tableName : string) : pSQL
+    fetch(): Promise<SQLResult>
+
+    limit(limitAmount: number) : pSQL
+    offset(offsetAmount: number) : pSQL
+
+    where(field : string, comparator : Comparator, value : any, escape : boolean) : pSQL
+        
+    whereNull(field : string) : pSQL
+
+    whereNotNull(field : string) : pSQL
+
+    whereIn(field : string, subQuery : pSQL) : pSQL
+    whereIn(field : string, values : any[], escape : boolean) : pSQL
+
+    weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: WeightedCondition, escape : boolean) : pSQL
+    weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number, escape : boolean) : pSQL
+    
+    subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: WeightedCondition, escape : boolean) : WeightedCondition
+    subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number, escape : boolean) : WeightedCondition
+
+    or() : pSQL
+
+    and() : pSQL
+
+    openBracket() : pSQL
+    closeBracket() : pSQL
+
+
+    join(tableName : any, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    join(tableName : any, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
+    join(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    join(tableName : string, primaryKey : string, foreignKey : string) : pSQL
+    
+    leftJoin(tableName : any, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    leftJoin(tableName : any, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
+    leftJoin(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    leftJoin(tableName : string, primaryKey : string, foreignKey : string) : pSQL
+
+    order(field:string,direction: "ASC" | "DESC"): pSQL
+
+    group(groupFields:string[]): pSQL
+
+
+}
+
+export default pSQL;
