@@ -11,7 +11,10 @@ interface pSQL {
     table(tableName : pSQL, tableAlias : string) : pSQL
     cols(columns : string[]) : pSQL
     table(tableName : string) : pSQL
+
+    
     fetch(): Promise<SQLResult>
+    stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void>
 
     limit(limitAmount: number) : pSQL
     offset(offsetAmount: number) : pSQL

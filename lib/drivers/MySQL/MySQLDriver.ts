@@ -362,7 +362,7 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
 
-    async fetch() {
+    public async fetch() {
         if(this.queryOptions.type !== "SELECT") {
             throw("Query is not SELECT");
         }
@@ -370,7 +370,58 @@ export default class MySQLDriver implements iSQL {
         return await this.execute(query);
     }
 
-
+    public stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void> {
+        return new Promise(async (resolve,reject)=>{
+            const connection = await this.getConnection();
+            let results:any[] = [];
+            const events = this.events?.get("SELECT");
+            const query = this.generateSelect();
+            
+            const triggerEvents = (results:any[]) => {
+                if(!events || events.length == 0) return;
+                events.forEach((e)=>{
+                    e({
+                        type: this.queryOptions.type,
+                        result: {
+                            insert_id: 0,
+                            rows_affected: 0,
+                            rows_changed: 0,
+                            rows: results
+                        },
+                        query: query,
+                        table: this.queryOptions.tableName ?? ""
+                    });
+                });
+            }
+            connection.query(query, this.queryOptions.params)
+                .on('error', (err)=>{
+                    reject(err);
+                })
+                .on('result',async (result) => {
+                    results.push(result);
+                    if(results.length >= num) {
+                        connection.pause();
+                        const shouldContinue = await callback(results);
+                        triggerEvents(results);
+                        results = [];
+                        if(!shouldContinue) {
+                            connection.destroy();
+                            resolve();
+                        } else {
+                            connection.resume();
+                        }
+                    }
+                })
+                .on('end',async ()=>{
+                    if(results.length > 0) {
+                        await callback(results);
+                        triggerEvents(results);
+                    }
+                    connection.release();
+                    resolve();
+                })
+        });        
+    }
 
 
 
