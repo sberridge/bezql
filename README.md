@@ -21,7 +21,7 @@ bezql.addConfig("test", {
 
 ## Remove Database Connection
 
-Use removeConfig to remove a connection.
+Use removeConfig to remove a connection and close any open connection pools.
 
 ```typescript
 bezql.removeConfig("test")
