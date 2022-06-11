@@ -6,7 +6,7 @@ Module which facilities the handling of SQL database connections as well as prov
 
 Add a connection using the addConfig function.
 
-```
+```typescript
 import * as bezql from "bezql";
 
 bezql.addConfig("test", {
@@ -23,7 +23,7 @@ bezql.addConfig("test", {
 
 Use removeConfig to remove a connection.
 
-```
+```typescript
 bezql.removeConfig("test")
 ```
 
@@ -31,7 +31,7 @@ bezql.removeConfig("test")
 
 Use startQuery to begin building a query on a given connection.
 
-```
+```typescript
 const query = bezql.startQuery("test");
 ```
 
@@ -39,7 +39,7 @@ const query = bezql.startQuery("test");
 
 Use the various functions to build up a select query before using "fetch" to return the results, for example:
 
-```
+```typescript
 //select from users
 query.table("users");
 
@@ -56,7 +56,7 @@ query.fetch().then(results=>{
 
 You can use the various join methods to join tables together
 
-```
+```typescript
 query.join("user_settings", "users.id", "user_settings.user_id");
 query.leftJoin("user_settings", "users.id", "user_settings.user_id");
 
