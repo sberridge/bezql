@@ -518,7 +518,6 @@ export default class MySQLDriver implements iSQL {
                     result.rows = results;
                 }
                 const events = this.events?.get(this.queryOptions.type);
-                console.log(events);
                 if(events && events.length > 0) {
                     events.forEach((e)=>{
                         e({
