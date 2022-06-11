@@ -26,6 +26,12 @@ class QueryOptions {
     offsetAmount: number | undefined
 
 
+    multiInsertValues? : {[key:string]:any}[];
+    insertValues? : {[key:string]:any};
+
+    updateValues? : {[key:string]:any};
+
+
     constructor(constraints:QueryConstraints) {
         this.queryConstraints = constraints;
     }

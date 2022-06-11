@@ -12,6 +12,9 @@ interface iSQL extends pSQL {
     generateConditional(ifThis:string,thenVal:string,elseVal:string):string
 
     generateSelect(): string
+    generateInsert():string
+    generateUpdate():string
+    generateDelete():string
     /** END MODULE PRIVATE */
 
 }

@@ -125,9 +125,9 @@ export default class QueryConstraints {
                 var paramPrefixes = [];
                 if(Array.isArray(values)) {
                     if(!escape) {
-                        valueString = " (" + values.join(",") + ") ";
+                        valueString = ` (${values.join(",")}) `;
                     } else {
-                        valueString = " (" + values.map((value,index)=>{
+                        valueString = ` (${values.map(()=>{
                             if(this.namedParams) {
                                 var namedParam = this.namedParamPrefix + (this.namedParamNum++).toString();
                                 paramPrefixes.push(namedParam);
@@ -135,7 +135,7 @@ export default class QueryConstraints {
                             } else {
                                 return "?";
                             }                    
-                        }).join(",") + ") ";
+                        }).join(",")}) `;
                         params = values;
                     }
                 } else {
@@ -213,20 +213,20 @@ export default class QueryConstraints {
                     if(!where.func || !where.args) return;
                     let whereDetails = where.func(...where.args);
                     if(!first && this.wheres[i-1]['type'] !== 'bracket') {
-                        whereString += " " + logic.toUpperCase() + " ";
+                        whereString += ` ${logic.toUpperCase()} `;
                     }
                     first = false;
-                    whereString += " " + whereDetails.field + " " + whereDetails.comparator + " ";
+                    whereString += ` ${whereDetails.field} ${whereDetails.comparator} `;
                     if(whereDetails.escape) {
                         if(this.namedParams) {
-                            whereString += " " + this.namedParamSymbol + whereDetails.namedParam + " ";
+                            whereString += ` ${this.namedParamSymbol} ${whereDetails.namedParam} `;
                             paramNames.push(whereDetails.namedParam);
                         } else {
                             whereString += " ? ";
                         }                        
                         params.push(whereDetails.value);
                     } else {
-                        whereString += " " + whereDetails.value + " ";
+                        whereString += ` ${whereDetails.value} `;
                     }
                     if("params" in whereDetails && whereDetails.params) {
                         whereDetails.params.forEach((whereParam:any)=>{
@@ -244,9 +244,9 @@ export default class QueryConstraints {
                     break;
                 case "bracket":
                     if(where.value == '(' && !first) {
-                        whereString += " " + logic.toUpperCase() + " ";
+                        whereString += ` ${logic.toUpperCase()} `;
                     }
-                    whereString += " " + where.value + " ";
+                    whereString += ` ${where.value} `;
                     break;
             }
         });

@@ -54,6 +54,16 @@ interface pSQL {
     group(groupFields:string[]): pSQL
 
 
+
+    insert(columnValues : {[key:string]:any}[], escape : boolean) : pSQL
+    insert(columnValues : {[key:string]:any}, escape : boolean) : pSQL
+
+    update(columnValues : {[key:string]:any}, escape : boolean) : pSQL
+    save() : Promise<SQLResult>
+
+    delete(): Promise<SQLResult>
+
+
 }
 
 export default pSQL;

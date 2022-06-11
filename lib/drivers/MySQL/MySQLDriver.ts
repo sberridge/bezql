@@ -338,9 +338,154 @@ export default class MySQLDriver implements iSQL {
     }
 
     async fetch() {
+        if(this.queryOptions.type !== "SELECT") {
+            throw("Query is not SELECT");
+        }
         const query = this.generateSelect();
         return await this.execute(query);
     }
+
+
+
+
+
+    private multiInsert(columnValues: {[key:string]:any}[], escape: boolean) {
+        var params:any[] = [];
+        var multiInsertValues:any[] = [];
+        columnValues.forEach((insertRecord:{[key:string]:any})=>{
+            if(escape) {
+                for(var key in insertRecord) {
+                    params.push(insertRecord[key]);
+                    insertRecord[key] = "?";
+                }
+            }
+            multiInsertValues.push(insertRecord);
+        });
+        this.queryOptions.multiInsertValues = multiInsertValues;
+        this.queryOptions.params = params;
+    }
+    private singleInsert(columnValues:{[key:string]:any}, escape: boolean) {
+        var params = [];
+        if(escape) {
+            for(var key in columnValues) {
+                params.push(columnValues[key]);
+                columnValues[key] = "?";
+            }
+        }
+        this.queryOptions.params = params;
+        this.queryOptions.insertValues = columnValues;
+    }
+    public insert(columnValues : {[key:string]:any}[], escape : boolean) : MySQLDriver
+    public insert(columnValues : {[key:string]:any}, escape : boolean) : MySQLDriver
+    public insert(columnValues : {[key:string]:any}[] | {[key:string]:any}, escape : boolean = true) : MySQLDriver {            
+        this.queryOptions.type = "INSERT";
+        if(Array.isArray(columnValues)) {
+            this.multiInsert(columnValues, escape);
+        } else {
+           this.singleInsert(columnValues, escape);
+        }
+        
+        return this;
+    }
+
+
+    private generateMultiInsert(): string {
+        if(!this.queryOptions.multiInsertValues) {
+            return "";
+        }
+        var columns = Object.keys(this.queryOptions.multiInsertValues[0]).map(this.escape);
+        var insert = columns.join(",") + ") VALUES ";
+        insert += this.queryOptions.multiInsertValues.map((insertRow:object)=>{
+            return `(${Object.values(insertRow).join(",")})`;
+        }).join(',');
+        return insert;
+    }
+
+    private generateSingleInsert(): string {
+        if(!this.queryOptions.insertValues) {
+            return "";
+        }
+        var columns = Object.keys(this.queryOptions.insertValues).map(this.escape);
+        var insert = columns.join(",") + ") VALUES ";
+        insert += `(${Object.values(this.queryOptions.insertValues).join(",")})`;
+        return insert;
+    }
+
+    public generateInsert() : string {
+        var query = `INSERT INTO ${this.queryOptions.tableName} (`;
+        if(typeof this.queryOptions.multiInsertValues == "undefined") {
+            query += this.generateSingleInsert();
+        } else {
+            query += this.generateMultiInsert();
+        }
+        return query;
+    }
+
+
+    public update(columnValues : {[key:string]:any}, escape : boolean = true) : MySQLDriver {
+        this.queryOptions.type = "UPDATE";
+        var params = [];
+        if(escape) {
+            for(var key in columnValues) {
+                params.push(columnValues[key]);
+                columnValues[key] = "?";
+            }
+        }
+        this.queryOptions.params = params;
+        this.queryOptions.updateValues = columnValues;
+        return this;
+    }
+
+    public generateUpdate() : string {
+        var query = `UPDATE ${this.queryOptions.tableName} SET `;
+        for(var key in this.queryOptions.updateValues) {
+            query += ` ${this.escape(key)} = ${this.queryOptions.updateValues[key]}, `;
+        }
+        query = (query.substring(0,query.length - 2)) + " ";
+
+        if(this.queryOptions.queryConstraints.getWheres().length > 0) {
+            query += " WHERE " + (this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params ?? [],[])) + " ";
+        }
+
+        return query;
+    }
+
+    public async save() : Promise<SQLResult> {
+        switch(this.queryOptions.type) {
+            case "INSERT":
+                return await this.execute(this.generateInsert());
+            case "UPDATE":
+                return await this.execute(this.generateUpdate());
+        }
+
+        throw "Query is not UPDATE or INSERT";
+
+    }
+
+
+
+
+    public async delete(): Promise<SQLResult> {
+        this.queryOptions.type = "DELETE";
+        return await this.execute(this.generateDelete());
+    }
+
+
+    public generateDelete() : string {
+        var query = `DELETE FROM ${this.queryOptions.tableName} `;
+        this.queryOptions.params = [];
+        if(this.queryOptions.queryConstraints.getWheres().length > 0) {
+            query += ` WHERE ${(this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params,[]))} `;
+        }
+        return query;
+    }
+
+
+    
+
+
+
+
 
     public execute(query : string): Promise<SQLResult> {
         return new Promise(async (resolve,reject)=>{
