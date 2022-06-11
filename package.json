@@ -1,13 +1,13 @@
 {
   "name": "bezql",
   "version": "1.0.0",
-  "description": "",
+  "description": "Module for managing SQL connections, generating, and running queries",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Steven Berridge",
+  "license": "MIT",
   "dependencies": {
     "@types/node": "^17.0.41",
     "mysql": "^2.18.1"

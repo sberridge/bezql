@@ -54,6 +54,20 @@ export default class MySQLDriver implements iSQL {
         });
     }
 
+    public closePool(key: string):Promise<void> {
+        return new Promise((resolve,reject)=>{
+            const connection = MySQLDriver.pools.get(key);
+            if(connection) {
+                connection.end((err)=>{
+                    MySQLDriver.pools.delete(key);
+                    resolve();
+                })
+            } else {
+                resolve();
+            }
+        });  
+    }
+
     public addEvents(events: Map<CRUDOperation, ((e:Event)=>void)[]>): void {
         this.events = events;
     }

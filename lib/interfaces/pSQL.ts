@@ -39,13 +39,13 @@ interface pSQL {
     closeBracket() : pSQL
 
 
-    join(tableName : any, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
-    join(tableName : any, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
+    join(tableName : pSQL, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    join(tableName : pSQL, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
     join(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
     join(tableName : string, primaryKey : string, foreignKey : string) : pSQL
     
-    leftJoin(tableName : any, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
-    leftJoin(tableName : any, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
+    leftJoin(tableName : pSQL, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
+    leftJoin(tableName : pSQL, tableAlias : string, primaryKey : string, foreignKey : string) : pSQL
     leftJoin(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : pSQL
     leftJoin(tableName : string, primaryKey : string, foreignKey : string) : pSQL
 

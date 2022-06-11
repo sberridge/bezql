@@ -5,6 +5,9 @@ import pSQL from "./pSQL";
 interface iSQL extends pSQL {
 
     /** MODULE PRIVATE */
+
+    closePool(key: string) : Promise<void>
+
     getParams(): any[]
     increaseParamNum(num:number):void
     getParamNum():number

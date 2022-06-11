@@ -3,7 +3,7 @@
         "strict": true,
         "baseUrl": "./",
         "outDir": "./build",
-        "sourceMap": true,
+        "sourceMap": false,
         "declaration": true,
         "module": "commonjs",
         "moduleResolution": "Node",
