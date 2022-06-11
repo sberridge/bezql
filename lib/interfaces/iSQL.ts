@@ -1,4 +1,5 @@
-import SQLResult from "../../lib/classes/SQLResult";
+import Event from "./../types/Event";
+import CRUDOperation from "./../types/CRUDOperation";
 import pSQL from "./pSQL";
 
 interface iSQL extends pSQL {
@@ -15,6 +16,9 @@ interface iSQL extends pSQL {
     generateInsert():string
     generateUpdate():string
     generateDelete():string
+
+    addEvents(events:Map<CRUDOperation, ((e:Event)=>void)[]>):void
+
     /** END MODULE PRIVATE */
 
 }

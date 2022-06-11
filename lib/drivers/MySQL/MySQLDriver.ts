@@ -6,12 +6,15 @@ import * as mysql from 'mysql';
 import QueryConstraints from "./classes/QueryConstraints";
 import WeightedCondition from "./classes/WeightedCondition";
 import Comparator from "./../../types/Comparator";
+import CRUDOperation from "./../../types/CRUDOperation";
+import Event from "./../../types/Event";
 
 export default class MySQLDriver implements iSQL {
 
     private queryOptions: QueryOptions;
     private config:ConnectionConfig;
     private configName:string;
+    private events: Map<CRUDOperation, ((e:Event)=>void)[]> | undefined;
 
     private static pools: Map<string, mysql.Pool> = new Map();
 
@@ -51,8 +54,16 @@ export default class MySQLDriver implements iSQL {
         });
     }
 
+    public addEvents(events: Map<CRUDOperation, ((e:Event)=>void)[]>): void {
+        this.events = events;
+    }
+
     public newQuery() {
-        return new MySQLDriver(this.configName, this.config);
+        const query = new MySQLDriver(this.configName, this.config);
+        if(this.events) {
+            query.addEvents(this.events);
+        }        
+        return query;
     }
 
     private static reservedWords = [
@@ -506,6 +517,19 @@ export default class MySQLDriver implements iSQL {
                 } else {
                     result.rows = results;
                 }
+                const events = this.events?.get(this.queryOptions.type);
+                console.log(events);
+                if(events && events.length > 0) {
+                    events.forEach((e)=>{
+                        e({
+                            type: this.queryOptions.type,
+                            result: result,
+                            query: query,
+                            table: this.queryOptions.tableName ?? ""
+                        });
+                    });
+                }
+
                 return resolve(result);
             });
             
