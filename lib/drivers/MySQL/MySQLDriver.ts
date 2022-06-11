@@ -87,7 +87,7 @@ export default class MySQLDriver implements iSQL {
             word = wordAndAlias[0];
         }
         if(word.includes('.')) {
-            var wordParts = word.split('.');
+            let wordParts = word.split('.');
             word = wordParts.map((val)=>{
                 return this.escape.call(this,val);
             }).join('.');
@@ -156,7 +156,7 @@ export default class MySQLDriver implements iSQL {
         
 
         if(queryOptions.weightedConditions.length > 0) {
-            var weightedConditionQueries = queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
+            let weightedConditionQueries = queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
                 return condition.applyCondition(this,params,[]);
             });
             queryOptions.selectColumns.push(weightedConditionQueries.join(' + ') + ' __condition_weight__');
@@ -196,7 +196,7 @@ export default class MySQLDriver implements iSQL {
 
         if(queryOptions.ordering.length > 0) {
             query += " ORDER BY ";
-            var orders = queryOptions.ordering.map((val)=>{
+            let orders = queryOptions.ordering.map((val)=>{
                 return this.escape(val['field']) + " " + val["direction"];
             });
             query += orders.join(",");
@@ -243,7 +243,7 @@ export default class MySQLDriver implements iSQL {
 
     public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : MySQLDriver
     public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean = true) : MySQLDriver {
-        var weightedQuery = new QueryConstraints(false);
+        let weightedQuery = new QueryConstraints(false);
         weightedQuery.where(this.escape(field),comparator,value,escape);
         this.queryOptions.weightedConditions.push(new WeightedCondition(weightedQuery,weight,nonMatchWeight));
         return this;
@@ -251,7 +251,7 @@ export default class MySQLDriver implements iSQL {
     
     public subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : WeightedCondition
     public subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight:number | WeightedCondition, escape : boolean = true) : WeightedCondition {
-        var weightedQuery = new QueryConstraints(false);
+        let weightedQuery = new QueryConstraints(false);
         weightedQuery.where(this.escape(field),comparator,value,escape);
         return new WeightedCondition(weightedQuery,weight,nonMatchWeight);
     }
@@ -301,10 +301,10 @@ export default class MySQLDriver implements iSQL {
     }
 
     private addJoin(type: string, table : string | MySQLDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined):void {
-        var tableName = "";
-        var primaryKey: string | ((q:QueryConstraints)=>QueryConstraints) | undefined;
-        var foreignKey: string | undefined;
-        var params = [];
+        let tableName = "";
+        let primaryKey: string | ((q:QueryConstraints)=>QueryConstraints) | undefined;
+        let foreignKey: string | undefined;
+        let params = [];
         if(typeof table == "string") {
             tableName = table;
             primaryKey = arg2;
@@ -315,7 +315,7 @@ export default class MySQLDriver implements iSQL {
             foreignKey = arg4;
             params = table.getParams();
         }
-        var query = new QueryConstraints(false);
+        let query = new QueryConstraints(false);
         if(primaryKey && typeof primaryKey != "string") {
             primaryKey(query);
         } else if(typeof primaryKey == "string") {
@@ -361,11 +361,11 @@ export default class MySQLDriver implements iSQL {
 
 
     private multiInsert(columnValues: {[key:string]:any}[], escape: boolean) {
-        var params:any[] = [];
-        var multiInsertValues:any[] = [];
+        let params:any[] = [];
+        let multiInsertValues:any[] = [];
         columnValues.forEach((insertRecord:{[key:string]:any})=>{
             if(escape) {
-                for(var key in insertRecord) {
+                for(let key in insertRecord) {
                     params.push(insertRecord[key]);
                     insertRecord[key] = "?";
                 }
@@ -376,9 +376,9 @@ export default class MySQLDriver implements iSQL {
         this.queryOptions.params = params;
     }
     private singleInsert(columnValues:{[key:string]:any}, escape: boolean) {
-        var params = [];
+        let params = [];
         if(escape) {
-            for(var key in columnValues) {
+            for(let key in columnValues) {
                 params.push(columnValues[key]);
                 columnValues[key] = "?";
             }
@@ -404,8 +404,8 @@ export default class MySQLDriver implements iSQL {
         if(!this.queryOptions.multiInsertValues) {
             return "";
         }
-        var columns = Object.keys(this.queryOptions.multiInsertValues[0]).map(this.escape);
-        var insert = columns.join(",") + ") VALUES ";
+        let columns = Object.keys(this.queryOptions.multiInsertValues[0]).map(this.escape);
+        let insert = columns.join(",") + ") VALUES ";
         insert += this.queryOptions.multiInsertValues.map((insertRow:object)=>{
             return `(${Object.values(insertRow).join(",")})`;
         }).join(',');
@@ -416,14 +416,14 @@ export default class MySQLDriver implements iSQL {
         if(!this.queryOptions.insertValues) {
             return "";
         }
-        var columns = Object.keys(this.queryOptions.insertValues).map(this.escape);
-        var insert = columns.join(",") + ") VALUES ";
+        let columns = Object.keys(this.queryOptions.insertValues).map(this.escape);
+        let insert = columns.join(",") + ") VALUES ";
         insert += `(${Object.values(this.queryOptions.insertValues).join(",")})`;
         return insert;
     }
 
     public generateInsert() : string {
-        var query = `INSERT INTO ${this.queryOptions.tableName} (`;
+        let query = `INSERT INTO ${this.queryOptions.tableName} (`;
         if(typeof this.queryOptions.multiInsertValues == "undefined") {
             query += this.generateSingleInsert();
         } else {
@@ -435,9 +435,9 @@ export default class MySQLDriver implements iSQL {
 
     public update(columnValues : {[key:string]:any}, escape : boolean = true) : MySQLDriver {
         this.queryOptions.type = "UPDATE";
-        var params = [];
+        let params = [];
         if(escape) {
-            for(var key in columnValues) {
+            for(let key in columnValues) {
                 params.push(columnValues[key]);
                 columnValues[key] = "?";
             }
@@ -448,8 +448,8 @@ export default class MySQLDriver implements iSQL {
     }
 
     public generateUpdate() : string {
-        var query = `UPDATE ${this.queryOptions.tableName} SET `;
-        for(var key in this.queryOptions.updateValues) {
+        let query = `UPDATE ${this.queryOptions.tableName} SET `;
+        for(let key in this.queryOptions.updateValues) {
             query += ` ${this.escape(key)} = ${this.queryOptions.updateValues[key]}, `;
         }
         query = (query.substring(0,query.length - 2)) + " ";
@@ -483,7 +483,7 @@ export default class MySQLDriver implements iSQL {
 
 
     public generateDelete() : string {
-        var query = `DELETE FROM ${this.queryOptions.tableName} `;
+        let query = `DELETE FROM ${this.queryOptions.tableName} `;
         this.queryOptions.params = [];
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += ` WHERE ${(this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params,[]))} `;
