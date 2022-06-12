@@ -2,6 +2,20 @@
 
 Package which handles SQL database connections as well as providing a query builder and executioner.
 
+## Installation
+
+Currently unavailable via package manager.
+
+To install download the repository, build the project with TypeScript and link the package using npm link.
+
+```bash
+#in the build folder
+npm link
+
+#in your project folder
+npm link bezql
+```
+
 ## Adding Database Connections
 
 Add a connection using the addConfig function.
