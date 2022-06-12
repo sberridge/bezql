@@ -190,6 +190,8 @@ export default class QueryConstraints {
     }
 
     public onIn = this.whereIn;
+
+    public onNotIn = this.whereNotIn;
     
     public or() : QueryConstraints {
         this.wheres.push({
