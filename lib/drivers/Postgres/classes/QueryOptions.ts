@@ -1,17 +1,28 @@
 import iSQL from "../../../interfaces/iSQL";
 import QueryConstraints from "../../../classes/QueryConstraints";
 import WeightedCondition from "../../../classes/WeightedCondition";
+import PostgresDriver from "../PostgresDriver";
 
 class QueryOptions {
 
     type: "SELECT" | "INSERT" | "UPDATE" | "DELETE" = "SELECT";
     tableName?: string;
     subStatement?: [iSQL, string];
+    incrementingField?: string;
     joins: {
-        type: string
-        table: string
-        params: any[]
-        query: QueryConstraints
+        func: (type: string, table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined, arg4 : string | undefined)=>{
+            type: string,
+            table: string,
+            query: QueryConstraints,
+            params: any[]
+        }
+        args: [
+            string,
+            string | PostgresDriver,
+            string | ((q: QueryConstraints)=>QueryConstraints),
+            string | ((q: QueryConstraints)=>QueryConstraints) | undefined,
+            string | undefined
+        ]
     }[] = [];
     params?: any[];
 

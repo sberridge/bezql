@@ -1,5 +1,7 @@
+import SupportedDatabase from "./SupportedDatabase";
+
 type ConnectionConfig = {
-    "type": string,
+    "type": SupportedDatabase,
     "host": string,
     "port": number,
     "database": string,

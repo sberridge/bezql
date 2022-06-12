@@ -1,4 +1,4 @@
-import iSQL from "./../../../interfaces/iSQL";
+import iSQL from "../interfaces/iSQL";
 import QueryConstraints from "./QueryConstraints";
 
 export default class WeightedCondition {

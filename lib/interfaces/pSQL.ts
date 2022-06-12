@@ -1,7 +1,7 @@
 import Comparator from "../types/Comparator";
 import SQLResult from "../classes/SQLResult";
-import WeightedCondition from "./../drivers/MySQL/classes/WeightedCondition";
-import QueryConstraints from "./../drivers/MySQL/classes/QueryConstraints";
+import WeightedCondition from "../classes/WeightedCondition";
+import QueryConstraints from "../classes/QueryConstraints";
 import Order from "./../types/Order";
 
 interface pSQL {
@@ -12,6 +12,7 @@ interface pSQL {
     cols(columns : string[]) : pSQL
     table(tableName : string) : pSQL
 
+    setIncrementingField(field: string) : pSQL
     
     fetch(): Promise<SQLResult>
     stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void>

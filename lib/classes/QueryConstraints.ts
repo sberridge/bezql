@@ -1,5 +1,5 @@
-import iSQL from './../../../interfaces/iSQL';
-import Comparator from './../../../types/Comparator';
+import iSQL from '../interfaces/iSQL';
+import Comparator from '../types/Comparator';
 type whereDetails = {
     type: "where" | "logic" | "bracket"
     func?: (...args:any[])=>whereDetails
@@ -31,6 +31,10 @@ export default class QueryConstraints {
     
     public increaseParamNum(num:number) {
         this.namedParamNum += num;
+    }
+
+    public setParamNum(num:number) {
+        this.namedParamNum = num;
     }
 
     public setPrefix(prefix:string) {
@@ -219,7 +223,7 @@ export default class QueryConstraints {
                     whereString += ` ${whereDetails.field} ${whereDetails.comparator} `;
                     if(whereDetails.escape) {
                         if(this.namedParams) {
-                            whereString += ` ${this.namedParamSymbol} ${whereDetails.namedParam} `;
+                            whereString += ` ${this.namedParamSymbol}${whereDetails.namedParam} `;
                             paramNames.push(whereDetails.namedParam);
                         } else {
                             whereString += " ? ";

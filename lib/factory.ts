@@ -1,5 +1,6 @@
-import ConnectionConfig from "lib/types/ConnectionConfig";
+import ConnectionConfig from "./types/ConnectionConfig";
 import MySQLDriver from "./drivers/MySQL/MySQLDriver";
+import PostgresDriver from "./drivers/Postgres/PostgresDriver";
 import iSQL from "./interfaces/iSQL";
 import CRUDOperation from "./types/CRUDOperation";
 import Event from "./types/Event";
@@ -41,6 +42,10 @@ export default class Factory {
         switch(config.type) {
             case "MySQL":
                 handler = new MySQLDriver(configKey, config);
+                break;
+            case "Postgres":
+                handler = new PostgresDriver(configKey, config);
+                break;
         }
 
         const events = this.configEvents.get(configKey);

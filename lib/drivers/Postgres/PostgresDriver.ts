@@ -1,66 +1,69 @@
-import SQLResult from "../../classes/SQLResult";
-import iSQL from "../../interfaces/iSQL";
-import ConnectionConfig from "../../types/ConnectionConfig";
+import ConnectionConfig from "./../../types/ConnectionConfig";
 import QueryOptions from "./classes/QueryOptions";
-import * as mysql from 'mysql';
-import QueryConstraints from "../../classes/QueryConstraints";
-import WeightedCondition from "../../classes/WeightedCondition";
-import Comparator from "./../../types/Comparator";
 import CRUDOperation from "./../../types/CRUDOperation";
 import Event from "./../../types/Event";
-import pSQL from "lib/interfaces/pSQL";
+import QueryConstraints from "./../../classes/QueryConstraints";
+import * as pg from 'pg';
+import WeightedCondition from "./../../classes/WeightedCondition";
+import Comparator from "./../../types/Comparator";
+import iSQL from "./../../interfaces/iSQL";
+import SQLResult from "./../../classes/SQLResult";
 
-export default class MySQLDriver implements iSQL {
+const  QueryStream = require('pg-query-stream');
+
+export default class PostgresDriver implements iSQL {
 
     private queryOptions: QueryOptions;
     private config:ConnectionConfig;
     private configName:string;
     private events: Map<CRUDOperation, ((e:Event)=>void)[]> | undefined;
 
-    private static pools: Map<string, mysql.Pool> = new Map();
+    private static pools: Map<string, pg.Pool> = new Map();
 
     constructor(configName: string, config:ConnectionConfig) {
         this.config = config;
         this.configName = configName;
-        const constraints = new QueryConstraints(false);
+        const constraints = new QueryConstraints(true);
+        constraints.setParamSymbol("$");
+        constraints.setPrefix("");
+        constraints.increaseParamNum(1);
         this.queryOptions = new QueryOptions(constraints);
     }
 
     private connect() {
-        let pool = MySQLDriver.pools.get(this.configName);
+        let pool = PostgresDriver.pools.get(this.configName);
         if(!pool) {
-            let config:mysql.PoolConfig = {
-                connectionLimit: 100,
+            let config:pg.PoolConfig = {
                 host: this.config.host,
                 user: this.config.user,
                 password: this.config.password,
                 database: this.config.database,
                 port: this.config.port
             };
-            pool = mysql.createPool(config);
-            MySQLDriver.pools.set(this.configName, pool);
+            pool = new pg.Pool(config);
+            PostgresDriver.pools.set(this.configName, pool);
         }
         return pool;
     }
 
-    private getConnection(): Promise<mysql.PoolConnection> {
+    private getConnection(): Promise<pg.PoolClient> {
         return new Promise((resolve,reject)=>{
             const connection = this.connect();
-            connection.getConnection((error, connection)=>{
-                if(error) {
-                    return reject(error);
+            connection.connect((err,client)=>{
+                if(err) {
+                    return reject(err);
                 }
-                return resolve(connection);
+                return resolve(client);
             });
         });
     }
 
     public closePool(key: string):Promise<void> {
         return new Promise((resolve,reject)=>{
-            const connection = MySQLDriver.pools.get(key);
+            const connection = PostgresDriver.pools.get(key);
             if(connection) {
-                connection.end((err)=>{
-                    MySQLDriver.pools.delete(key);
+                connection.end(()=>{
+                    PostgresDriver.pools.delete(key);
                     resolve();
                 })
             } else {
@@ -74,7 +77,7 @@ export default class MySQLDriver implements iSQL {
     }
 
     public newQuery() {
-        const query = new MySQLDriver(this.configName, this.config);
+        const query = new PostgresDriver(this.configName, this.config);
         if(this.events) {
             query.addEvents(this.events);
         }        
@@ -107,8 +110,8 @@ export default class MySQLDriver implements iSQL {
                 return this.escape.call(this,val);
             }).join('.');
         } else {
-            if(MySQLDriver.reservedWords.includes(word.toLowerCase())) {
-                word = '`' + word + '`';
+            if(PostgresDriver.reservedWords.includes(word.toLowerCase())) {
+                word = '"' + word + '"';
             }
         }
         if(alias) {
@@ -137,13 +140,14 @@ export default class MySQLDriver implements iSQL {
         return this.queryOptions.queryConstraints.getParamNum();
     }
 
-    public setIncrementingField(field: string): iSQL {
+    public setIncrementingField(field: string): PostgresDriver {
+        this.queryOptions.incrementingField = this.escape(field);
         return this;
     }
 
-    public table(tableName: MySQLDriver, tableAlias: string): MySQLDriver
-    public table(tableName: string): MySQLDriver
-    public table(tableName: string | MySQLDriver, tableAlias?: string): MySQLDriver {
+    public table(tableName: PostgresDriver, tableAlias: string): PostgresDriver
+    public table(tableName: string): PostgresDriver
+    public table(tableName: string | PostgresDriver, tableAlias?: string): PostgresDriver {
         if(typeof tableName === "string") {
             this.queryOptions.tableName = this.escape(tableName);
         } else if(tableAlias) {
@@ -153,7 +157,7 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
 
-    public cols(selectColumns : string[]) : MySQLDriver {
+    public cols(selectColumns : string[]) : PostgresDriver {
         this.queryOptions.selectColumns = selectColumns.map((col)=>{return this.escape.call(this,col)});       
         return this;
     }
@@ -161,7 +165,56 @@ export default class MySQLDriver implements iSQL {
 
 
     public generateConditional(ifThis:string,thenVal:string,elseVal:string):string {
-        return "if(" + ifThis + ', ' + thenVal + ', ' + elseVal + ")";
+        return `CASE WHEN ${ifThis} THEN ${thenVal} ELSE ${elseVal} END`;
+    }
+
+    private applyWeightedConditions() {
+        let newParams:any[] = [];
+        if(this.queryOptions.weightedConditions.length > 0) {
+            var weightedConditionQueries = this.queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
+                condition.increaseParamNum(this.getParamNum() - 1);
+                let startParamNum = condition.getParamNum();
+                let query = condition.applyCondition(this, newParams, []);
+                let diff = condition.getParamNum() - startParamNum;
+                this.increaseParamNum(diff);
+                return query;
+            });
+            this.queryOptions.selectColumns.push(`${weightedConditionQueries.join(' + ')} __condition_weight__`);
+            this.queryOptions.ordering.unshift({
+                'field': '__condition_weight__',
+                'direction': "DESC"
+            });
+        }
+        return newParams;
+    }
+
+    private applySubStatement(): [string, any[]] {
+        if(!this.queryOptions.subStatement) {
+            return ["",[]]
+        }
+        let [substatement,alias] = this.queryOptions.subStatement;
+        let startParamNum = substatement.getParamNum();
+        let query = ` (${substatement.generateSelect()}) ${alias} `;
+        let diff = substatement.getParamNum() - startParamNum;
+        this.increaseParamNum(diff);
+        return [query, substatement.getParams()];
+    }
+
+    private applyJoins(): [string, any[]] {
+        let newParams:any[] = [];
+        let joinStrings:string[] = [];
+        this.queryOptions.joins.forEach((join : any)=>{
+            let joinDetails = join.func(...join.args);
+            joinDetails.params.forEach(function(param: any) {
+                newParams.push(param);
+            });
+            joinDetails.query.increaseParamNum(this.getParamNum()-1);
+            let startParamNum = joinDetails.query.getParamNum();
+            joinStrings.push(` ${joinDetails.type}  ${joinDetails.table} ON ${(joinDetails.query.applyWheres(newParams,[]))} `);
+            let diff = joinDetails.query.getParamNum() - startParamNum;
+            this.increaseParamNum(diff);
+        });
+        return [joinStrings.join(" "), newParams];
     }
 
     public generateSelect() {
@@ -174,61 +227,50 @@ export default class MySQLDriver implements iSQL {
         let query = "SELECT ";
         
 
-        if(queryOptions.weightedConditions.length > 0) {
-            let weightedConditionQueries = queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
-                return condition.applyCondition(this,params,[]);
-            });
-            queryOptions.selectColumns.push(weightedConditionQueries.join(' + ') + ' __condition_weight__');
-            queryOptions.ordering.unshift({
-                'field': '__condition_weight__',
-                'direction': "DESC"
-            });
-        }
+        params.push(...this.applyWeightedConditions())
 
         query += queryOptions.selectColumns.join(",");
 
         query += " FROM ";
 
         if(queryOptions.subStatement) {
-            query += `(${queryOptions.subStatement[0].generateSelect()}) ${queryOptions.subStatement[1]} `;
-            queryOptions.subStatement[0].getParams().forEach(function(param) {
-                params.push(param);
-            });
+            let [subQuery, subParams] = this.applySubStatement();
+            query += subQuery;
+            params.push(...subParams)
         } else {
-            query += " " + queryOptions.tableName + " ";
+            query += ` ${queryOptions.tableName} `;
         }
 
-        queryOptions.joins.forEach(function(join : any) {
-            join.params.forEach((param:any)=>{
-                params.push(param);
-            });
-            query += " " + join.type + " " + " " + join.table + " ON " + (join.query.applyWheres(params,[]));
-        });
+        const [joinString, joinParams] = this.applyJoins();
+        query += joinString;
+        params.push(...joinParams);
+
         if(queryOptions.queryConstraints.getWheres().length > 0) {
-            query += " WHERE " + (queryOptions.queryConstraints.applyWheres(params,[])) + " ";
-        }                
+            query += ` WHERE ${(queryOptions.queryConstraints.applyWheres(params,[]))} `;
+        }  
+            
         queryOptions.params = params;
 
         if(typeof queryOptions.groupFields != "undefined" && queryOptions.groupFields.length > 0) {
-            query += " GROUP BY " + queryOptions.groupFields.join(",");
+            query += ` GROUP BY ${queryOptions.groupFields.join(",")} `;
         }
 
         if(queryOptions.ordering.length > 0) {
             query += " ORDER BY ";
-            let orders = queryOptions.ordering.map((val)=>{
+            var orders = queryOptions.ordering.map((val)=>{
                 return this.escape(val['field']) + " " + val["direction"];
             });
             query += orders.join(",");
         }        
 
         if(typeof queryOptions.limitAmount != "undefined") {
-            query += " LIMIT " + queryOptions.limitAmount + " ";
+            query += ` LIMIT ${queryOptions.limitAmount} `;
         }
 
         if(typeof queryOptions.offsetAmount != "undefined") {
-            query += " OFFSET " + queryOptions.offsetAmount + " ";
+            query += ` OFFSET ${queryOptions.offsetAmount} `;
         }
-
+        
         return query;
     }
 
@@ -260,9 +302,12 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
 
-    public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : MySQLDriver
-    public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean = true) : MySQLDriver {
-        let weightedQuery = new QueryConstraints(false);
+    public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : PostgresDriver
+    public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean = true) : PostgresDriver {
+        let weightedQuery = new QueryConstraints(true);
+        weightedQuery.setParamSymbol("$");
+        weightedQuery.setPrefix("");
+        weightedQuery.increaseParamNum(1);
         weightedQuery.where(this.escape(field),comparator,value,escape);
         this.queryOptions.weightedConditions.push(new WeightedCondition(weightedQuery,weight,nonMatchWeight));
         return this;
@@ -270,43 +315,46 @@ export default class MySQLDriver implements iSQL {
     
     public subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : WeightedCondition
     public subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight:number | WeightedCondition, escape : boolean = true) : WeightedCondition {
-        let weightedQuery = new QueryConstraints(false);
+        let weightedQuery = new QueryConstraints(true);
+        weightedQuery.setParamSymbol("$");
+        weightedQuery.setPrefix("");
+        weightedQuery.increaseParamNum(1);
         weightedQuery.where(this.escape(field),comparator,value,escape);
         return new WeightedCondition(weightedQuery,weight,nonMatchWeight);
     }
 
-    public or() : MySQLDriver {
+    public or() : PostgresDriver {
         this.queryOptions.queryConstraints.or();
         return this;
     }
     
-    public and() : MySQLDriver {
+    public and() : PostgresDriver {
         this.queryOptions.queryConstraints.and();
         return this;
     }
     
-    public openBracket() : MySQLDriver {
+    public openBracket() : PostgresDriver {
         this.queryOptions.queryConstraints.openBracket();
         return this;
     }
     
-    public closeBracket() : MySQLDriver {
+    public closeBracket() : PostgresDriver {
         this.queryOptions.queryConstraints.closeBracket();
         return this;
     }
 
 
-    public limit(limitAmount: number) : MySQLDriver {
+    public limit(limitAmount: number) : PostgresDriver {
         this.queryOptions.limitAmount = limitAmount;
         return this;
     }
 
-    public offset(offsetAmount: number) : MySQLDriver {
+    public offset(offsetAmount: number) : PostgresDriver {
         this.queryOptions.offsetAmount = offsetAmount;
         return this;
     }
 
-    public order(field:string, direction: "ASC" | "DESC"): MySQLDriver {
+    public order(field:string, direction: "ASC" | "DESC"): PostgresDriver {
         this.queryOptions.ordering.push({
             field: field,
             direction: direction
@@ -314,55 +362,73 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
     
-    public group(groupFields:string[]): MySQLDriver {
+    public group(groupFields:string[]): PostgresDriver {
         this.queryOptions.groupFields = groupFields;
         return this;
     }
 
-    private addJoin(type: string, table : string | MySQLDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined):void {
-        let tableName = "";
-        let primaryKey: string | ((q:QueryConstraints)=>QueryConstraints) | undefined;
-        let foreignKey: string | undefined;
-        let params = [];
-        if(typeof table == "string") {
-            tableName = table;
-            primaryKey = arg2;
-            foreignKey = <string>arg3;
-        } else {
-            tableName = "(" + table.generateSelect() + ") " + arg2 + " ";
-            primaryKey = arg3;
-            foreignKey = arg4;
-            params = table.getParams();
-        }
-        let query = new QueryConstraints(false);
-        if(primaryKey && typeof primaryKey != "string") {
-            primaryKey(query);
-        } else if(typeof primaryKey == "string") {
-            query.on(primaryKey,"=",foreignKey);
-            
-        }
+    private addJoin(type: string, table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined):void {
+        
         this.queryOptions.joins.push({
-            type: type,
-            table: tableName,
-            query: query,
-            params: params
+            func: (type: string, table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined) => {
+                let tableName = "";
+                let primaryKey: string | ((q:QueryConstraints)=>QueryConstraints) | undefined;
+                let foreignKey: string | undefined;
+                let params = [];
+                if(typeof table == "string") {
+                    tableName = table;
+                    primaryKey = arg2;
+                    foreignKey = <string>arg3;
+                } else {
+                    table.increaseParamNum(this.getParamNum()-1);
+                    let startParamNum = table.getParamNum();
+                    tableName = "(" + table.generateSelect() + ") " + arg2 + " ";
+                    let paramDif = table.getParamNum() - startParamNum;
+                    this.increaseParamNum(paramDif);
+                    primaryKey = arg3;
+                    foreignKey = arg4;
+                    params = table.getParams();
+                }
+                let query = new QueryConstraints(true);
+                query.setParamSymbol("$");
+                query.setPrefix("");
+                query.increaseParamNum(1);
+                if(primaryKey && typeof primaryKey != "string") {
+                    primaryKey(query);
+                } else if(typeof primaryKey == "string") {
+                    query.on(primaryKey,"=",foreignKey);            
+                }
+                return {
+                    type: type,
+                    table: tableName,
+                    query: query,
+                    params: params
+                };
+            },
+            args: [
+                type,
+                table,
+                arg2,
+                arg3,
+                arg4
+            ]
         });
     }
 
-    public join(tableName : MySQLDriver, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : MySQLDriver
-    public join(tableName : MySQLDriver, tableAlias : string, primaryKey : string, foreignKey : string) : MySQLDriver
-    public join(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : MySQLDriver
-    public join(tableName : string, primaryKey : string, foreignKey : string) : MySQLDriver
-    public join(table : string | MySQLDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined) : MySQLDriver {
+    public join(tableName : PostgresDriver, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : PostgresDriver
+    public join(tableName : PostgresDriver, tableAlias : string, primaryKey : string, foreignKey : string) : PostgresDriver
+    public join(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : PostgresDriver
+    public join(tableName : string, primaryKey : string, foreignKey : string) : PostgresDriver
+    public join(table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined) : PostgresDriver {
         this.addJoin("JOIN", table, arg2, arg3, arg4);
         return this;
     }
     
-    public leftJoin(tableName : MySQLDriver, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : MySQLDriver
-    public leftJoin(tableName : MySQLDriver, tableAlias : string, primaryKey : string, foreignKey : string) : MySQLDriver
-    public leftJoin(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : MySQLDriver
-    public leftJoin(tableName : string, primaryKey : string, foreignKey : string) : MySQLDriver
-    public leftJoin(table : string | MySQLDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined) : MySQLDriver {
+    public leftJoin(tableName : PostgresDriver, tableAlias : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : PostgresDriver
+    public leftJoin(tableName : PostgresDriver, tableAlias : string, primaryKey : string, foreignKey : string) : PostgresDriver
+    public leftJoin(tableName : string, queryFunc : (q: QueryConstraints) => QueryConstraints) : PostgresDriver
+    public leftJoin(tableName : string, primaryKey : string, foreignKey : string) : PostgresDriver
+    public leftJoin(table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined) : PostgresDriver {
         this.addJoin("LEFT JOIN", table, arg2, arg3, arg4);
         return this;
     }
@@ -378,10 +444,11 @@ export default class MySQLDriver implements iSQL {
     public stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void> {
         return new Promise(async (resolve,reject)=>{
             const connection = await this.getConnection();
-            let results:any[] = [];
+            var results:any[] = [];
+            const query = new QueryStream(this.generateSelect(), this.queryOptions.params);
+            const stream = connection.query(query);
+
             const events = this.events?.get("SELECT");
-            const query = this.generateSelect();
-            
             const triggerEvents = (results:any[]) => {
                 if(!events || events.length == 0) return;
                 events.forEach((e)=>{
@@ -398,34 +465,37 @@ export default class MySQLDriver implements iSQL {
                     });
                 });
             }
-            connection.query(query, this.queryOptions.params)
-                .on('error', (err)=>{
-                    reject(err);
-                })
-                .on('result',async (result) => {
-                    results.push(result);
-                    if(results.length >= num) {
-                        connection.pause();
-                        const shouldContinue = await callback(results);
-                        triggerEvents(results);
-                        results = [];
-                        if(!shouldContinue) {
-                            connection.destroy();
-                            resolve();
-                        } else {
-                            connection.resume();
-                        }
-                    }
-                })
-                .on('end',async ()=>{
-                    if(results.length > 0) {
-                        await callback(results);
-                        triggerEvents(results);
-                    }
-                    connection.release();
-                    resolve();
-                })
-        });        
+
+            stream.on("data",async (data:any)=>{
+                results.push(data);
+                if(results.length >= num) {
+                    stream.pause();
+                    const shouldContinue = await callback(results);
+                    triggerEvents(results);
+                    results = [];
+                    if(!shouldContinue) {
+                        stream.destroy();
+                        stream.cursor.close();
+                        connection.release();
+                        resolve();
+                    } else {
+                        stream.resume();
+                    }                        
+                }
+            })
+            .on("error", (err:any)=>{
+                reject(err);
+            })
+            .on("end",async ()=>{
+                if(results.length > 0) {
+                    await callback(results);
+                    triggerEvents(results);
+                }
+                connection.release();
+                resolve();
+            })   
+        });
+        
     }
 
 
@@ -436,8 +506,9 @@ export default class MySQLDriver implements iSQL {
         columnValues.forEach((insertRecord:{[key:string]:any})=>{
             if(escape) {
                 for(let key in insertRecord) {
-                    params.push(insertRecord[key]);
-                    insertRecord[key] = "?";
+                    var num = params.push(insertRecord[key]);
+                    var name = num.toString();
+                    insertRecord[key] = "$" + name;
                 }
             }
             multiInsertValues.push(insertRecord);
@@ -449,16 +520,17 @@ export default class MySQLDriver implements iSQL {
         let params = [];
         if(escape) {
             for(let key in columnValues) {
-                params.push(columnValues[key]);
-                columnValues[key] = "?";
+                var num = params.push(columnValues[key]);
+                var name = num.toString();
+                columnValues[key] = "$" + name;
             }
         }
         this.queryOptions.params = params;
         this.queryOptions.insertValues = columnValues;
     }
-    public insert(columnValues : {[key:string]:any}[], escape : boolean) : MySQLDriver
-    public insert(columnValues : {[key:string]:any}, escape : boolean) : MySQLDriver
-    public insert(columnValues : {[key:string]:any}[] | {[key:string]:any}, escape : boolean = true) : MySQLDriver {            
+    public insert(columnValues : {[key:string]:any}[], escape : boolean) : PostgresDriver
+    public insert(columnValues : {[key:string]:any}, escape : boolean) : PostgresDriver
+    public insert(columnValues : {[key:string]:any}[] | {[key:string]:any}, escape : boolean = true) : PostgresDriver {            
         this.queryOptions.type = "INSERT";
         if(Array.isArray(columnValues)) {
             this.multiInsert(columnValues, escape);
@@ -499,18 +571,24 @@ export default class MySQLDriver implements iSQL {
         } else {
             query += this.generateMultiInsert();
         }
+
+        if(this.queryOptions.incrementingField) {
+            query += ` returning ${this.queryOptions.incrementingField}`;
+        }
         return query;
     }
 
 
-    public update(columnValues : {[key:string]:any}, escape : boolean = true) : MySQLDriver {
+    public update(columnValues : {[key:string]:any}, escape : boolean = true) : PostgresDriver {
         this.queryOptions.type = "UPDATE";
         let params = [];
         if(escape) {
             for(let key in columnValues) {
-                params.push(columnValues[key]);
-                columnValues[key] = "?";
+                var num = params.push(columnValues[key]);
+                var name = num.toString();
+                columnValues[key] = "$" + name;
             }
+            this.queryOptions.queryConstraints.increaseParamNum(params.length);
         }
         this.queryOptions.params = params;
         this.queryOptions.updateValues = columnValues;
@@ -558,6 +636,7 @@ export default class MySQLDriver implements iSQL {
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += ` WHERE ${(this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params,[]))} `;
         }
+        console.log(query);
         return query;
     }
 
@@ -573,19 +652,24 @@ export default class MySQLDriver implements iSQL {
 
             const connection = await this.getConnection();
 
-            connection.query(query,this.queryOptions.params,(error,results,fields)=>{
+            connection.query(query,this.queryOptions.params ?? [],(error,results)=>{
                 let result = new SQLResult();
                 connection.release();
                 if(error !== null) {
                     return reject(error);
                 }
-                let resultType = results.constructor.name;
-                if(resultType === 'OkPacket') {
-                    result.rows_affected = results.affectedRows;
-                    result.rows_changed = results.changedRows;
-                    result.insert_id = results.insertId;
+                
+                if(results.command == "INSERT") {
+                    result.rows_affected = results.rowCount;
+                    result.rows_changed = results.rowCount;
+                    if(this.queryOptions.incrementingField) {
+                        result.insert_id = results.rows[0][results.fields[0].name]
+                    }
+                } else if(["UPDATE", "DELETE"].includes(results.command)) {
+                    result.rows_affected = results.rowCount;
+                    result.rows_changed = results.rowCount;
                 } else {
-                    result.rows = results;
+                    result.rows = results.rows;
                 }
                 const events = this.events?.get(this.queryOptions.type);
                 if(events && events.length > 0) {
@@ -599,11 +683,11 @@ export default class MySQLDriver implements iSQL {
                     });
                 }
 
+                this.queryOptions.queryConstraints.setParamNum(1);
+
                 return resolve(result);
             });
             
         });
     }
-
-
 }
