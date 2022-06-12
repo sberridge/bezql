@@ -107,6 +107,31 @@ query.and();
 query.where("date_created", ">", "2022-06-12 00:00:00", true);
 ```
 
+#### Weighted Conditions
+
+Weighted conditions allow results to be ordered based on certain conditions, for example to return all records matching a certain query first, followed by rows matching another query before finally returning all other rows.
+
+This can be useful when implementing search logic.
+
+```typescript
+//results are assigned a value depending on whether or not they match the criteria
+//field, comparison symbol, value, value to assign if matching, value to assign if not matching, boolean to control whether or not to parametise 
+query.weightedWhere("name", "=", "CEO", 10, 5, true);
+query.weightedWhere("name", "=", "CTO", 9, 5, true);
+```
+
+In the above example, users with the name "CEO" will be returned first, followed by users name "CTO", then all other users will follow.
+
+##### Sub Weighted Conditions
+
+You can supply a sub weighted conditional in the place of the 5th argument in order to apply if else style conditions, for example
+
+```typescript
+const secondCondition = query.subWeightedWhere("name", "=", "CTO", 9, 5, true);
+
+query.weightedWhere("name", "=", "CEO", 10, secondCondition, true);
+```
+
 ### Joining
 
 You can use the various join methods to join tables together
