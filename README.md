@@ -226,3 +226,27 @@ deleteQuery.where("id", "=", 1, true);
 
 const deleteResult = await deleteQuery.delete();
 ```
+
+## Events
+
+It is possible to add event listeners to a connection to trigger functions when certain CRUD operations are executed.
+
+```typescript
+bezql.addEventListener("test", "SELECT", (event)=>{
+    //triggers whenever a SELECT query executes (as well as on every iteration of a stream)
+
+    const type = event.type; //SELECT
+    const result = event.result; //{insert_id: 0, rows_affected: 0, rows_changed: 0, rows: [result_set]}
+    const query = event.query; //SELECT * FROM users
+    const table = event.table; //users
+});
+
+bezql.addEventListener("test", "UPDATE", (event)=>{
+});
+
+bezql.addEventListener("test", "INSERT", (event)=>{
+});
+
+bezql.addEventListener("test", "DELETE", (event)=>{
+});
+```
