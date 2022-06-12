@@ -93,7 +93,7 @@ insert.table("users");
 insert.insert({
     "first_name": "George",
     "surname": "Jennings"
-});
+}, true);
 
 const insertResult = await insert.save();
 
@@ -109,10 +109,21 @@ multipleInsert.insert([
         "first_name": "Kathrine",
         "surname": "Earling"
     }
-]);
+], true);
 
 const multiResult = await multipleInsert.save();
 ```
 
 ## Update Records
 
+Updating records uses the same conditional methods as selecting, combined with the update and save method.
+
+```typescript
+updateQuery.update({
+    "is_active": 0
+}, true);
+
+updateQuery.whereIn("id", [1,2,3]);
+
+const updateResult = await updateQuery.save();
+```
