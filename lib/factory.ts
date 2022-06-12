@@ -76,6 +76,7 @@ export default class Factory {
             await connection.closePool(name);
         }
         this.config.delete(name);
+        this.configEvents.delete(name);
         return;
     }
 

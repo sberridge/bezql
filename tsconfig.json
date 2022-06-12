@@ -7,11 +7,14 @@
         "declaration": true,
         "module": "commonjs",
         "moduleResolution": "Node",
+        "resolveJsonModule": true,
         "emitDecoratorMetadata": false,
         "experimentalDecorators": false,
         "importHelpers": true,
         "target": "esnext",
         "lib": ["ESNext"],
-        "types": ["node"]
-    }
+        "types": ["node", "jest"]
+    },
+    "include": ["package.json"],
+    "exclude": ["*.test.ts","build","node_modules"]
 }

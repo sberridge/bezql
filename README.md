@@ -1,6 +1,6 @@
 # BeZQL
 
-Module which facilities the handling of SQL database connections as well as providing a query builder and executioner.
+Package which handles SQL database connections as well as providing a query builder and executioner.
 
 ## Adding Database Connections
 
@@ -18,6 +18,10 @@ bezql.addConfig("test", {
     "database": "test"
 });
 ```
+
+### Supported Databases
+
+This package currently supports MySQL and Postgres connections.
 
 ## Remove Database Connection
 
@@ -75,3 +79,40 @@ subQuery.group(["user_id"]);
 
 query.leftJoin(subQuery, "user_job_count", "user_job_count.user_id", "users.id");
 ```
+
+## Inserting Records
+
+Records can be inserted using the insert and save methods.
+
+```typescript
+const insert = bezql.startQuery("test");
+
+insert.table("users");
+
+//single record
+insert.insert({
+    "first_name": "George",
+    "surname": "Jennings"
+});
+
+const insertResult = await insert.save();
+
+
+//multiple records
+const multipleInsert = bezql.startQuery("test");
+multipleInsert.insert([
+    {
+        "first_name": "Lizzie",
+        "surname": "Smith"
+    },
+    {
+        "first_name": "Kathrine",
+        "surname": "Earling"
+    }
+]);
+
+const multiResult = await multipleInsert.save();
+```
+
+## Update Records
+
