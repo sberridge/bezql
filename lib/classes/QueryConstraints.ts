@@ -118,49 +118,68 @@ export default class QueryConstraints {
 
     public onNotNull = this.whereNotNull;
 
+    private generateWhereInFunc(type: "IN" | "NOT IN"): ((...args: any[]) => whereDetails) | undefined {
+        return (field:string, values: iSQL | any[], escape:boolean=true)=>{
+            var valueString : string;
+            var params:any[] = [];
+            var paramPrefixes:any[] = [];
+            if(Array.isArray(values)) {
+                if(!escape) {
+                    valueString = ` (${values.join(",")}) `;
+                } else {
+                    valueString = ` (${values.map(()=>{
+                        if(this.namedParams) {
+                            var namedParam = this.namedParamPrefix + (this.namedParamNum++).toString();
+                            paramPrefixes.push(namedParam);
+                            return this.namedParamSymbol + namedParam;
+                        } else {
+                            return "?";
+                        }                    
+                    }).join(",")}) `;
+                    params = values;
+                }
+            } else {
+                values.increaseParamNum(this.getParamNum()-1);
+                let startParamNum = values.getParamNum();
+                valueString = " (" + values.generateSelect() + ") ";
+                let paramDif = values.getParamNum() - startParamNum;
+                this.increaseParamNum(paramDif);
+                params = values.getParams();
+                paramPrefixes = values.getParamNames();
+            }
+            return {
+                type: "where",
+                field: field,
+                comparator: type,
+                value: valueString,
+                escape: false,
+                params: params,
+                paramNames: paramPrefixes
+            };
+        };
+    }
+
     public whereIn(field : string, subQuery : iSQL) : QueryConstraints
     public whereIn(field : string, values : any[], escape : boolean) : QueryConstraints
     public whereIn(field : string, values : iSQL | any[], escape : boolean = true) : QueryConstraints {
         this.wheres.push({
             type: "where",
-            func: (field:string, values: iSQL | any[], escape:boolean=true)=>{
-                var valueString : string;
-                var params = [];
-                var paramPrefixes = [];
-                if(Array.isArray(values)) {
-                    if(!escape) {
-                        valueString = ` (${values.join(",")}) `;
-                    } else {
-                        valueString = ` (${values.map(()=>{
-                            if(this.namedParams) {
-                                var namedParam = this.namedParamPrefix + (this.namedParamNum++).toString();
-                                paramPrefixes.push(namedParam);
-                                return this.namedParamSymbol + namedParam;
-                            } else {
-                                return "?";
-                            }                    
-                        }).join(",")}) `;
-                        params = values;
-                    }
-                } else {
-                    values.increaseParamNum(this.getParamNum()-1);
-                    let startParamNum = values.getParamNum();
-                    valueString = " (" + values.generateSelect() + ") ";
-                    let paramDif = values.getParamNum() - startParamNum;
-                    this.increaseParamNum(paramDif);
-                    params = values.getParams();
-                    paramPrefixes = values.getParamNames();
-                }
-                return {
-                    type: "where",
-                    field: field,
-                    comparator: "IN",
-                    value: valueString,
-                    escape: false,
-                    params: params,
-                    paramNames: paramPrefixes
-                };
-            },
+            func: this.generateWhereInFunc("IN"),
+            args: [
+                field,
+                values,
+                escape
+            ]
+        });
+        return this;
+    }
+
+    public whereNotIn(field : string, subQuery : iSQL) : QueryConstraints
+    public whereNotIn(field : string, values : any[], escape : boolean) : QueryConstraints
+    public whereNotIn(field : string, values : iSQL | any[], escape : boolean = true) : QueryConstraints {
+        this.wheres.push({
+            type: "where",
+            func: this.generateWhereInFunc("NOT IN"),
             args: [
                 field,
                 values,

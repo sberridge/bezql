@@ -305,6 +305,18 @@ export default class PostgresDriver implements iSQL {
         }        
         return this;
     }
+    
+    public whereNotIn(field : string, subQuery : iSQL) : iSQL
+    public whereNotIn(field : string, values : any[], escape : boolean) : iSQL
+    public whereNotIn(field : string, values : iSQL | any[], escape : boolean = true) : iSQL {
+        field = this.escape(field);
+        if(Array.isArray(values)) {
+            this.queryOptions.queryConstraints.whereNotIn(field,values,escape);                
+        } else {
+            this.queryOptions.queryConstraints.whereNotIn(field,values);
+        }        
+        return this;
+    }
 
     public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean) : PostgresDriver
     public weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number | WeightedCondition, escape : boolean = true) : PostgresDriver {
@@ -378,7 +390,7 @@ export default class PostgresDriver implements iSQL {
                 let tableName = "";
                 let primaryKey: string | ((q:QueryConstraints)=>QueryConstraints) | undefined;
                 let foreignKey: string | undefined;
-                let params = [];
+                let params: any[] = [];
                 if(typeof table == "string") {
                     tableName = table;
                     primaryKey = arg2;
@@ -530,7 +542,7 @@ export default class PostgresDriver implements iSQL {
         this.queryOptions.params = params;
     }
     private singleInsert(columnValues:{[key:string]:any}, escape: boolean) {
-        let params = [];
+        let params:any[] = [];
         if(escape) {
             for(let key in columnValues) {
                 var num = params.push(columnValues[key]);
@@ -596,7 +608,7 @@ export default class PostgresDriver implements iSQL {
 
     public update(columnValues : {[key:string]:any}, escape : boolean = true) : PostgresDriver {
         this.queryOptions.type = "UPDATE";
-        let params = [];
+        let params:any[] = [];
         if(escape) {
             for(let key in columnValues) {
                 var num = params.push(columnValues[key]);

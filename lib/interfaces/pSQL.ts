@@ -28,6 +28,9 @@ interface pSQL {
 
     whereIn(field : string, subQuery : pSQL) : pSQL
     whereIn(field : string, values : any[], escape : boolean) : pSQL
+    
+    whereNotIn(field : string, subQuery : pSQL) : pSQL
+    whereNotIn(field : string, values : any[], escape : boolean) : pSQL
 
     weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: WeightedCondition, escape : boolean) : pSQL
     weightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number, escape : boolean) : pSQL
