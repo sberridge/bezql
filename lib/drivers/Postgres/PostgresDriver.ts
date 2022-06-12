@@ -140,6 +140,10 @@ export default class PostgresDriver implements iSQL {
         return this.queryOptions.queryConstraints.getParamNum();
     }
 
+    private resetParamNum() {
+        this.queryOptions.queryConstraints.setParamNum(1);
+    }
+
     public setIncrementingField(field: string): PostgresDriver {
         this.queryOptions.incrementingField = this.escape(field);
         return this;
@@ -270,7 +274,7 @@ export default class PostgresDriver implements iSQL {
         if(typeof queryOptions.offsetAmount != "undefined") {
             query += ` OFFSET ${queryOptions.offsetAmount} `;
         }
-        
+        this.resetParamNum();
         return query;
     }
 
@@ -445,9 +449,10 @@ export default class PostgresDriver implements iSQL {
         return new Promise(async (resolve,reject)=>{
             const connection = await this.getConnection();
             var results:any[] = [];
-            const query = new QueryStream(this.generateSelect(), this.queryOptions.params);
+            const queryString = this.generateSelect();
+            const query = new QueryStream(queryString, this.queryOptions.params);
             const stream = connection.query(query);
-
+            let running = true;
             const events = this.events?.get("SELECT");
             const triggerEvents = (results:any[]) => {
                 if(!events || events.length == 0) return;
@@ -460,38 +465,46 @@ export default class PostgresDriver implements iSQL {
                             rows_changed: 0,
                             rows: results
                         },
-                        query: query,
+                        query: queryString,
                         table: this.queryOptions.tableName ?? ""
                     });
                 });
             }
 
-            stream.on("data",async (data:any)=>{
-                results.push(data);
-                if(results.length >= num) {
-                    stream.pause();
-                    const shouldContinue = await callback(results);
+            const handleStreamBuffer = async (results: any[]) => {
+                let continueStream = true;
+                if(!running && results.length > 0) {
+                    await callback(results);
                     triggerEvents(results);
-                    results = [];
-                    if(!shouldContinue) {
+                } else if(results.length >= num) {
+                    const resultsToSend = results.splice(0, num);
+                    stream.pause();
+                    continueStream = await callback(resultsToSend);
+                    triggerEvents(resultsToSend);
+                    if(continueStream) {
+                        stream.resume();
+                    } else {
                         stream.destroy();
                         stream.cursor.close();
                         connection.release();
+                        this.queryOptions.queryConstraints.setParamNum(1);
                         resolve();
-                    } else {
-                        stream.resume();
-                    }                        
+                    }
                 }
+            }
+
+            stream.on("data",async (data:any)=>{
+                results.push(data);
+                await handleStreamBuffer(results);
             })
             .on("error", (err:any)=>{
                 reject(err);
             })
             .on("end",async ()=>{
-                if(results.length > 0) {
-                    await callback(results);
-                    triggerEvents(results);
-                }
                 connection.release();
+                running = false;
+                handleStreamBuffer(results);
+                this.queryOptions.queryConstraints.setParamNum(1);
                 resolve();
             })   
         });
@@ -575,6 +588,8 @@ export default class PostgresDriver implements iSQL {
         if(this.queryOptions.incrementingField) {
             query += ` returning ${this.queryOptions.incrementingField}`;
         }
+
+        this.resetParamNum();
         return query;
     }
 
@@ -605,7 +620,7 @@ export default class PostgresDriver implements iSQL {
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += " WHERE " + (this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params ?? [],[])) + " ";
         }
-
+        this.resetParamNum();
         return query;
     }
 
@@ -636,7 +651,7 @@ export default class PostgresDriver implements iSQL {
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += ` WHERE ${(this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params,[]))} `;
         }
-        console.log(query);
+        this.resetParamNum();
         return query;
     }
 
@@ -682,8 +697,6 @@ export default class PostgresDriver implements iSQL {
                         });
                     });
                 }
-
-                this.queryOptions.queryConstraints.setParamNum(1);
 
                 return resolve(result);
             });
