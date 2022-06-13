@@ -8,6 +8,7 @@ import WeightedCondition from "./../../classes/WeightedCondition";
 import Comparator from "./../../types/Comparator";
 import iSQL from "./../../interfaces/iSQL";
 import SQLResult from "./../../classes/SQLResult";
+import reservedWords from "./reservedWords";
 
 const  QueryStream = require('pg-query-stream');
 
@@ -84,18 +85,9 @@ export default class PostgresDriver implements iSQL {
         return query;
     }
 
-    private static reservedWords = [
-        'select',
-        'insert',
-        'delete',
-        'update',
-        'where',
-        'table',
-        'join',
-        'order',
-        'read',
-        'check'
-    ];
+    public static addReservedWord(word: string) {
+        reservedWords.push(word);
+    }
 
     private escape(word:string): string {
         let alias:string|null = null;
@@ -110,8 +102,8 @@ export default class PostgresDriver implements iSQL {
                 return this.escape.call(this,val);
             }).join('.');
         } else {
-            if(PostgresDriver.reservedWords.includes(word.toLowerCase())) {
-                word = '"' + word + '"';
+            if(reservedWords.includes(word.toLowerCase())) {
+                word = `"${word}"`;
             }
         }
         if(alias) {

@@ -8,6 +8,7 @@ import WeightedCondition from "../../classes/WeightedCondition";
 import Comparator from "./../../types/Comparator";
 import CRUDOperation from "./../../types/CRUDOperation";
 import Event from "./../../types/Event";
+import reservedWords from "./reservedWords";
 
 export default class MySQLDriver implements iSQL {
 
@@ -80,18 +81,9 @@ export default class MySQLDriver implements iSQL {
         return query;
     }
 
-    private static reservedWords = [
-        'select',
-        'insert',
-        'delete',
-        'update',
-        'where',
-        'table',
-        'join',
-        'order',
-        'read',
-        'check'
-    ];
+    public static addReservedWord(word: string) {
+        reservedWords.push(word);
+    }
 
     private escape(word:string): string {
         let alias:string|null = null;
@@ -106,7 +98,7 @@ export default class MySQLDriver implements iSQL {
                 return this.escape.call(this,val);
             }).join('.');
         } else {
-            if(MySQLDriver.reservedWords.includes(word.toLowerCase())) {
+            if(reservedWords.includes(word.toLowerCase())) {
                 word = '`' + word + '`';
             }
         }
