@@ -266,6 +266,22 @@ deleteQuery.where("id", "=", 1, true);
 const deleteResult = await deleteQuery.delete();
 ```
 
+## Reserved Words
+
+The module will automatically attempt to escape any reserved words that might be used for table or field names, but it is possible that some reserved words might have been missed.
+
+It is possible to add new reserved words to the internal list using the addReservedWord method, specifying the database type along with the word you need escaping. E.g.
+
+```typescript
+bezql.addReservedWord("MySQL", "blob");
+
+bezql.startQuery("mysql_db").table("blob").fetch(); //SELECT * FROM `blob`
+
+bezql.addReservedWord("Postgres", "blob");
+
+bezql.startQuery("postgres_db").table("blob").fetch(); //SELECT * FROM "blob"
+```
+
 ## Events
 
 It is possible to add event listeners to a connection to trigger functions when certain CRUD operations are executed.
