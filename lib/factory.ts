@@ -10,7 +10,13 @@ export default class Factory {
 
     private config:Map<string, ConnectionConfig> = new Map();
 
-    private configEvents:Map<string, Map<CRUDOperation, ((e:Event)=>void)[]>> = new Map();
+    private configEvents:Map<
+        string, Map<
+            "before" | "after", Map<
+                CRUDOperation, ((e:Event)=>Promise<boolean>)[]
+            >
+        >
+    > = new Map();
 
     private constructor() {
 
@@ -63,10 +69,18 @@ export default class Factory {
         }
         this.config.set(name, config);
         this.configEvents.set(name, new Map([
-            ["SELECT", []],
-            ["DELETE", []],
-            ["INSERT", []],
-            ["UPDATE", []],
+            ["after", new Map([
+                ["SELECT", []],
+                ["DELETE", []],
+                ["INSERT", []],
+                ["UPDATE", []],
+            ])],
+            ["before", new Map([
+                ["SELECT", []],
+                ["DELETE", []],
+                ["INSERT", []],
+                ["UPDATE", []],
+            ])]            
         ]));
     }
 
@@ -80,8 +94,8 @@ export default class Factory {
         return;
     }
 
-    public addConfigEvent(name: string, eventType: CRUDOperation, event:(e:Event)=>void) {
-        const events = this.configEvents.get(name);
+    public addConfigEvent(name: string, when: "before" | "after", eventType: CRUDOperation, event:(e:Event)=>Promise<boolean>) {
+        const events = this.configEvents.get(name)?.get(when);
         events?.get(eventType)?.push(event);
     }
 }

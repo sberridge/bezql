@@ -4,16 +4,8 @@ Package which handles SQL database connections as well as providing a query buil
 
 ## Installation
 
-Currently unavailable via package manager.
-
-To install download the repository, build the project with TypeScript and link the package using npm link.
-
-```bash
-#in the build folder
-npm link
-
-#in your project folder
-npm link bezql
+```
+npm install bezql
 ```
 
 ## Adding Database Connections
@@ -287,21 +279,32 @@ bezql.startQuery("postgres_db").table("blob").fetch(); //SELECT * FROM "blob"
 It is possible to add event listeners to a connection to trigger functions when certain CRUD operations are executed.
 
 ```typescript
-bezql.addEventListener("test", "SELECT", (event)=>{
+bezql.addEventListener("test", "before", "SELECT", async (event)=>{
     //triggers whenever a SELECT query executes (as well as on every iteration of a stream)
 
     const type = event.type; //SELECT
     const result = event.result; //{insert_id: 0, rows_affected: 0, rows_changed: 0, rows: [result_set]}
     const query = event.query; //SELECT * FROM users
     const table = event.table; //users
+    const connection = event.connection //clone of the SQL connection
 });
 
-bezql.addEventListener("test", "UPDATE", (event)=>{
+bezql.addEventListener("test", "before", "UPDATE", async (event)=>{
+    
+    const connection = event.connection;
+    await connection.fetch(); //fetch the rows that will be updated
+
+    //return false to cancel the query
+    return false;
 });
 
-bezql.addEventListener("test", "INSERT", (event)=>{
+bezql.addEventListener("test", "after", "INSERT", async (event)=>{
+
+    return true;
 });
 
-bezql.addEventListener("test", "DELETE", (event)=>{
+bezql.addEventListener("test", "before", "DELETE", async (event)=>{
+
+    return true;
 });
 ```

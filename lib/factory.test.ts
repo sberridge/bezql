@@ -44,7 +44,7 @@ describe("Factory for building SQL connections and query builders from configs",
 
     it("Should set up the event lists for an added config", ()=>{
         const factory = addTestConfig();
-        const events = factory["configEvents"].get("test");
+        const events = factory["configEvents"].get("test")?.get("before");
         expect(events).toBeDefined();
         expect(events).toBeInstanceOf(Map);
         
@@ -67,7 +67,7 @@ describe("Factory for building SQL connections and query builders from configs",
         const factory = addTestConfig("eventtest");
 
         cruds.forEach(c=>{
-            factory.addConfigEvent("eventtest", c, (e)=>{});
+            factory.addConfigEvent("eventtest", "before", c, async (e)=>{return true;});
         });       
 
         const events = factory["configEvents"].get("eventtest");
@@ -75,7 +75,7 @@ describe("Factory for building SQL connections and query builders from configs",
         if(!events) return;
 
         cruds.forEach(c=>{
-            expect(events.get(c)?.length).toEqual(1);
+            expect(events.get("before")?.get(c)?.length).toEqual(1);
         });
     });
 

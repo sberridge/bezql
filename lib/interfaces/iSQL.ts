@@ -1,6 +1,7 @@
 import Event from "./../types/Event";
 import CRUDOperation from "./../types/CRUDOperation";
 import pSQL from "./pSQL";
+import QueryConstraints from "./../classes/QueryConstraints";
 
 interface iSQL extends pSQL {
 
@@ -8,6 +9,7 @@ interface iSQL extends pSQL {
 
     closePool(key: string) : Promise<void>
 
+    getConstraints(): QueryConstraints;
     getParams(): any[]
     increaseParamNum(num:number):void
     getParamNum():number
@@ -20,7 +22,11 @@ interface iSQL extends pSQL {
     generateUpdate():string
     generateDelete():string
 
-    addEvents(events:Map<CRUDOperation, ((e:Event)=>void)[]>):void
+    addEvents(events:Map<
+            "before" | "after", Map<
+                CRUDOperation, ((e:Event)=>void)[]
+            >
+        >):void
 
     /** END MODULE PRIVATE */
 

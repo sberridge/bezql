@@ -2,7 +2,6 @@ import Comparator from "../types/Comparator";
 import SQLResult from "../classes/SQLResult";
 import WeightedCondition from "../classes/WeightedCondition";
 import QueryConstraints from "../classes/QueryConstraints";
-import Order from "./../types/Order";
 
 interface pSQL {
 
@@ -11,6 +10,8 @@ interface pSQL {
     table(tableName : pSQL, tableAlias : string) : pSQL
     cols(columns : string[]) : pSQL
     table(tableName : string) : pSQL
+
+    suppressEvents(suppress:boolean): pSQL;
 
     setIncrementingField(field: string) : pSQL
     
@@ -37,6 +38,8 @@ interface pSQL {
     
     subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: WeightedCondition, escape : boolean) : WeightedCondition
     subWeightedWhere(field : string, comparator : Comparator, value : any, weight: number, nonMatchWeight: number, escape : boolean) : WeightedCondition
+
+    copyConstraints(queryToCopy:pSQL): pSQL;
 
     or() : pSQL
 

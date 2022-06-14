@@ -15,8 +15,13 @@ export default class MySQLDriver implements iSQL {
     private queryOptions: QueryOptions;
     private config:ConnectionConfig;
     private configName:string;
-    private events: Map<CRUDOperation, ((e:Event)=>void)[]> | undefined;
+    private events: Map<
+            "before" | "after", Map<
+                CRUDOperation, ((e:Event)=>Promise<boolean>)[]
+            >
+        > | undefined;
 
+    private eventsSuppressed = false;
     private static pools: Map<string, mysql.Pool> = new Map();
 
     constructor(configName: string, config:ConnectionConfig) {
@@ -69,8 +74,17 @@ export default class MySQLDriver implements iSQL {
         });  
     }
 
-    public addEvents(events: Map<CRUDOperation, ((e:Event)=>void)[]>): void {
+    public addEvents(events: Map<
+        "before" | "after", Map<
+            CRUDOperation, ((e:Event)=>Promise<boolean>)[]
+        >
+    > ): void {
         this.events = events;
+    }
+
+    public suppressEvents(suppress: boolean): iSQL {
+        this.eventsSuppressed = suppress;
+        return this;
     }
 
     public newQuery() {
@@ -130,6 +144,10 @@ export default class MySQLDriver implements iSQL {
 
     public setIncrementingField(field: string): iSQL {
         return this;
+    }
+
+    public getConstraints() {
+        return this.queryOptions.queryConstraints;
     }
 
     public table(tableName: MySQLDriver, tableAlias: string): MySQLDriver
@@ -223,6 +241,10 @@ export default class MySQLDriver implements iSQL {
         return query;
     }
 
+    public copyConstraints(queryToCopy: iSQL): iSQL {
+        this.queryOptions.queryConstraints.setWheres(queryToCopy.getConstraints().getWheres());
+        return this;
+    }
 
     public where(field : string, comparator : Comparator, value : any, escape : boolean = true) : iSQL {
         this.queryOptions.queryConstraints.where(this.escape(field),comparator,value,escape);
@@ -371,36 +393,26 @@ export default class MySQLDriver implements iSQL {
     }
 
     public async fetch() {
-        if(this.queryOptions.type !== "SELECT") {
-            throw("Query is not SELECT");
-        }
+        this.queryOptions.type = "SELECT";
         const query = this.generateSelect();
         return await this.execute(query);
     }
 
     public stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void> {
         return new Promise(async (resolve,reject)=>{
+            const query = this.generateSelect();
+            const shouldContinue = await this.triggerBeforeEvents(query);
+
+            if(!shouldContinue) {
+                return resolve();
+            }
+
             const connection = await this.getConnection();
             let results:any[] = [];
-            const events = this.events?.get("SELECT");
-            const query = this.generateSelect();
             
-            const triggerEvents = (results:any[]) => {
-                if(!events || events.length == 0) return;
-                events.forEach((e)=>{
-                    e({
-                        type: this.queryOptions.type,
-                        result: {
-                            insert_id: 0,
-                            rows_affected: 0,
-                            rows_changed: 0,
-                            rows: results
-                        },
-                        query: query,
-                        table: this.queryOptions.tableName ?? ""
-                    });
-                });
-            }
+
+            
+            
             connection.query(query, this.queryOptions.params)
                 .on('error', (err)=>{
                     reject(err);
@@ -410,7 +422,12 @@ export default class MySQLDriver implements iSQL {
                     if(results.length >= num) {
                         connection.pause();
                         const shouldContinue = await callback(results);
-                        triggerEvents(results);
+                        this.triggerAfterEvents(query, {
+                            insert_id: 0,
+                            rows_affected: 0,
+                            rows_changed: 0,
+                            rows: [...results]
+                        });
                         results = [];
                         if(!shouldContinue) {
                             connection.destroy();
@@ -423,7 +440,12 @@ export default class MySQLDriver implements iSQL {
                 .on('end',async ()=>{
                     if(results.length > 0) {
                         await callback(results);
-                        triggerEvents(results);
+                        this.triggerAfterEvents(query, {
+                            insert_id: 0,
+                            rows_affected: 0,
+                            rows_changed: 0,
+                            rows: results
+                        });
                     }
                     connection.release();
                     resolve();
@@ -567,12 +589,62 @@ export default class MySQLDriver implements iSQL {
 
     
 
+    private async triggerBeforeEvents(query:string) {
+        const beforeEvents = this.events?.get("before")?.get(this.queryOptions.type);
+        let shouldContinue = true;
+        if(this.eventsSuppressed) {
+            return true;
+        }
+        if(beforeEvents && beforeEvents.length > 0) {
+            for(const i in beforeEvents) {
+                const newQuery = this.newQuery();
+                newQuery.queryOptions = {...this.queryOptions};
+                newQuery.suppressEvents(true);
+                let hasReturnedFalse = await beforeEvents[i]({
+                    "type": this.queryOptions.type,
+                    "table": this.queryOptions.tableName ?? "",
+                    "result": null,
+                    "query": query,
+                    "connection": newQuery
+                });
+                if(!hasReturnedFalse) {
+                    shouldContinue = false;
+                }
+            }
+        }
+        return shouldContinue;
+    }
 
+    private triggerAfterEvents(query:string, result:SQLResult) {
+        const afterEvents = this.events?.get("after")?.get(this.queryOptions.type);
+        if(this.eventsSuppressed) {
+            return;
+        }
+        if(afterEvents && afterEvents.length > 0) {
+            afterEvents.forEach((e)=>{
+                const newQuery = this.newQuery();
+                newQuery.queryOptions = {...this.queryOptions};
+                newQuery.suppressEvents(true);
+                e({
+                    type: this.queryOptions.type,
+                    result: result,
+                    query: query,
+                    table: this.queryOptions.tableName ?? "",
+                    connection: newQuery
+                });
+            });
+        }
+    }
 
 
 
     public execute(query : string): Promise<SQLResult> {
         return new Promise(async (resolve,reject)=>{
+
+            const shouldContinue = await this.triggerBeforeEvents(query);
+            if(!shouldContinue) {
+                return resolve(new SQLResult());
+            }
 
             const connection = await this.getConnection();
 
@@ -590,17 +662,8 @@ export default class MySQLDriver implements iSQL {
                 } else {
                     result.rows = results;
                 }
-                const events = this.events?.get(this.queryOptions.type);
-                if(events && events.length > 0) {
-                    events.forEach((e)=>{
-                        e({
-                            type: this.queryOptions.type,
-                            result: result,
-                            query: query,
-                            table: this.queryOptions.tableName ?? ""
-                        });
-                    });
-                }
+                
+                this.triggerAfterEvents(query, result);
 
                 return resolve(result);
             });

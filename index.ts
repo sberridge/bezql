@@ -24,8 +24,8 @@ export const removeConfig = async (name:string) => {
     await Factory.getInstance().removeConfig(name);
 }
 
-export const addEventListener = (configName: string, eventType: CRUDOperation, callback:(e:Event)=>void) => {
-    Factory.getInstance().addConfigEvent(configName, eventType, callback);
+export const addEventListener = (configName: string, when: "before" | "after", eventType: CRUDOperation, callback:(e:Event)=>Promise<boolean>) => {
+    Factory.getInstance().addConfigEvent(configName, when, eventType, callback);
 }
 
 export const addReservedWord = (dbType: SupportedDatabase, word: string) => {

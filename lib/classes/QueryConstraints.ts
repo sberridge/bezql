@@ -48,6 +48,10 @@ export default class QueryConstraints {
     public getWheres() {
         return this.wheres;
     }
+
+    public setWheres(wheres:whereDetails[]) {
+        this.wheres = wheres;
+    }
     
     public where(field : string, comparator : Comparator, value : any, escape : boolean = true) : QueryConstraints {
         
