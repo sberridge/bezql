@@ -467,7 +467,9 @@ export default class PostgresDriver implements iSQL {
     public async fetch() {
         this.queryOptions.type = "SELECT";
         const query = this.generateSelect();
-        return await this.execute(query);
+        return await this.execute(query).catch(err=>{
+            throw err;
+        });
     }
 
     public stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void> {
@@ -480,7 +482,10 @@ export default class PostgresDriver implements iSQL {
                 return resolve();
             }
 
-            const connection = await this.getConnection();
+            const connection = await this.getConnection().catch(err=>{
+                reject(err);
+            });
+            if(!connection) return;
             var results:any[] = [];
             
             const query = new QueryStream(queryString, this.queryOptions.params);
@@ -655,9 +660,13 @@ export default class PostgresDriver implements iSQL {
     public async save() : Promise<SQLResult> {
         switch(this.queryOptions.type) {
             case "INSERT":
-                return await this.execute(this.generateInsert());
+                return await this.execute(this.generateInsert()).catch(err=>{
+                    throw err;
+                });
             case "UPDATE":
-                return await this.execute(this.generateUpdate());
+                return await this.execute(this.generateUpdate()).catch(err=>{
+                    throw err;
+                });
         }
 
         throw "Query is not UPDATE or INSERT";
@@ -669,7 +678,9 @@ export default class PostgresDriver implements iSQL {
 
     public async delete(): Promise<SQLResult> {
         this.queryOptions.type = "DELETE";
-        return await this.execute(this.generateDelete());
+        return await this.execute(this.generateDelete()).catch(err=>{
+            throw err;
+        });
     }
 
 
@@ -743,7 +754,11 @@ export default class PostgresDriver implements iSQL {
                 return resolve(new SQLResult());
             }
 
-            const connection = await this.getConnection();
+            const connection = await this.getConnection().catch(err=>{
+                reject(err);
+            });
+
+            if(!connection) return;
 
             connection.query(query,this.queryOptions.params ?? [],(error,results)=>{
                 let result = new SQLResult();
