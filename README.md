@@ -258,6 +258,58 @@ deleteQuery.where("id", "=", 1, true);
 const deleteResult = await deleteQuery.delete();
 ```
 
+## Transactions
+
+Transactions can be started, rolled back, and commited using the appropriate methods.
+
+Use the newQuery method to start a separate query in the same transaction.
+
+```typescript
+const query1 = bezql.startQuery("mysql_db");
+
+await query1.beginTransaction().catch(err=>{
+    //record error
+});
+
+const saveUserResult = await query1.table("users")
+    .insert({
+        "name": "Kyle"
+    },true)
+    .save().catch(err=>{
+        //record error
+    });
+
+if(!saveUserResult) {
+    await query1.rollback().catch(err=>{
+        //record error
+    });
+    return;
+}
+
+const query2 = query1.newQuery();
+const saveProfileImageResult = query2.table("profile_images")
+    .insert({
+        "user_id": saveUserResult.insert_id,
+        "url": profileImageUrl
+    },true)
+    .save().catch(err=>{
+        //record error
+    });
+
+if(!saveProfileImageResult) {
+    await query2.rollback().catch(err=>{
+        //record error
+    });
+    return;
+}
+
+query2.commit().catch(err=>{
+    //query will automatically attempt to rollback if commit fails
+    //record error
+});
+
+```
+
 ## Reserved Words
 
 The module will automatically attempt to escape any reserved words that might be used for table or field names, but it is possible that some reserved words might have been missed.

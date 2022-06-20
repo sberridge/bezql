@@ -104,7 +104,6 @@ export default class PostgresDriver implements iSQL {
                 if(err) {
                     return reject(err);
                 }
-                console.log("rolledback");
                 this.transactionConnection?.release();
                 if(commitError) {
                     return reject(commitError);
@@ -121,7 +120,7 @@ export default class PostgresDriver implements iSQL {
             }
             this.transactionConnection.query("COMMIT", (err)=>{
                 if(err) {
-                    return this.rollback(err);
+                    return resolve(this.rollback(err));
                 }
                 this.transactionConnection?.release();
                 resolve(true);

@@ -130,7 +130,7 @@ export default class MySQLDriver implements iSQL {
             }
             this.transactionConnection.commit((err)=>{
                 if(err) {
-                    return this.rollback(err);
+                    return resolve(this.rollback(err));
                 }
                 this.transactionConnection?.release();
                 resolve(true);
