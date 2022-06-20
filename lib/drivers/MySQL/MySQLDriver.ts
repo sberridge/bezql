@@ -12,6 +12,7 @@ import reservedWords from "./reservedWords";
 
 export default class MySQLDriver implements iSQL {
 
+    private transactionConnection:mysql.PoolConnection | undefined;
     private queryOptions: QueryOptions;
     private config:ConnectionConfig;
     private configName:string;
@@ -50,6 +51,9 @@ export default class MySQLDriver implements iSQL {
 
     private getConnection(): Promise<mysql.PoolConnection> {
         return new Promise((resolve,reject)=>{
+            if(this.transactionConnection) {
+                return resolve(this.transactionConnection);
+            }
             const connection = this.connect();
             connection.getConnection((error, connection)=>{
                 if(error) {
@@ -87,8 +91,58 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
 
+    public beginTransaction(): Promise<boolean> {
+        return new Promise(async (resolve,reject)=>{
+            this.transactionConnection = await this.getConnection();
+            this.transactionConnection.beginTransaction((err)=>{
+                if(err) {
+                    this.transactionConnection?.release();
+                    return reject(err);
+                }
+                resolve(true);    
+            });
+            
+        });
+    }
+
+    public rollback(commitError?:mysql.MysqlError | undefined): Promise<boolean> {
+        return new Promise((resolve,reject)=>{
+            if(typeof this.transactionConnection === "undefined") {
+                return reject("No transaction in progress");
+            }
+            this.transactionConnection.rollback((err)=>{
+                if(err) {
+                    return reject(err);
+                }
+                this.transactionConnection?.release();
+                if(commitError) {
+                    return reject(commitError);
+                }
+                return resolve(true);
+            });
+        });        
+    }
+    
+    public commit(): Promise<boolean> {
+        return new Promise((resolve,reject)=>{
+            if(typeof this.transactionConnection === "undefined") {
+                return reject("No transaction in progress");
+            }
+            this.transactionConnection.commit((err)=>{
+                if(err) {
+                    return this.rollback(err);
+                }
+                this.transactionConnection?.release();
+                resolve(true);
+            });
+        });        
+    }
+
     public newQuery() {
         const query = new MySQLDriver(this.configName, this.config);
+        if(this.transactionConnection) {
+            query.transactionConnection = this.transactionConnection;
+        }
         if(this.events) {
             query.addEvents(this.events);
         }        
@@ -668,7 +722,11 @@ export default class MySQLDriver implements iSQL {
 
             connection.query(query,this.queryOptions.params,(error,results,fields)=>{
                 let result = new SQLResult();
-                connection.release();
+
+                if(!this.transactionConnection) {
+                    connection.release();
+                }
+                
                 if(error !== null) {
                     return reject(error);
                 }

@@ -14,6 +14,7 @@ const  QueryStream = require('pg-query-stream');
 
 export default class PostgresDriver implements iSQL {
 
+    private transactionConnection: pg.PoolClient | undefined;
     private queryOptions: QueryOptions;
     private config:ConnectionConfig;
     private configName:string;
@@ -54,6 +55,9 @@ export default class PostgresDriver implements iSQL {
 
     private getConnection(): Promise<pg.PoolClient> {
         return new Promise((resolve,reject)=>{
+            if(this.transactionConnection) {
+                return resolve(this.transactionConnection);
+            }
             const connection = this.connect();
             connection.connect((err,client)=>{
                 if(err) {
@@ -78,6 +82,53 @@ export default class PostgresDriver implements iSQL {
         });  
     }
 
+    public beginTransaction(): Promise<boolean> {
+        return new Promise(async (resolve,reject)=>{
+            this.transactionConnection = await this.getConnection();
+            this.transactionConnection.query("BEGIN", err=>{
+                if(err) {
+                    this.transactionConnection?.release();
+                    return reject(err);
+                }
+                resolve(true);
+            })
+        })
+    }
+
+    public rollback(commitError?:Error | undefined): Promise<boolean> {
+        return new Promise((resolve,reject)=>{
+            if(typeof this.transactionConnection === "undefined") {
+                return reject("No transaction in progress");
+            }
+            this.transactionConnection.query("ROLLBACK", (err)=>{
+                if(err) {
+                    return reject(err);
+                }
+                console.log("rolledback");
+                this.transactionConnection?.release();
+                if(commitError) {
+                    return reject(commitError);
+                }
+                return resolve(true);
+            });
+        });        
+    }
+    
+    public commit(): Promise<boolean> {
+        return new Promise((resolve,reject)=>{
+            if(typeof this.transactionConnection === "undefined") {
+                return reject("No transaction in progress");
+            }
+            this.transactionConnection.query("COMMIT", (err)=>{
+                if(err) {
+                    return this.rollback(err);
+                }
+                this.transactionConnection?.release();
+                resolve(true);
+            });
+        });
+    }
+
     public addEvents(events: Map<
             "before" | "after", Map<
                 CRUDOperation, ((e:Event)=>Promise<boolean>)[]
@@ -93,6 +144,9 @@ export default class PostgresDriver implements iSQL {
 
     public newQuery() {
         const query = new PostgresDriver(this.configName, this.config);
+        if(this.transactionConnection) {
+            query.transactionConnection = this.transactionConnection;
+        }
         if(this.events) {
             query.addEvents(this.events);
         }        
@@ -762,7 +816,9 @@ export default class PostgresDriver implements iSQL {
 
             connection.query(query,this.queryOptions.params ?? [],(error,results)=>{
                 let result = new SQLResult();
-                connection.release();
+                if(!this.transactionConnection) {
+                    connection.release();
+                }                
                 if(error !== null) {
                     return reject(error);
                 }

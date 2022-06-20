@@ -14,6 +14,10 @@ interface pSQL {
     suppressEvents(suppress:boolean): pSQL;
 
     setIncrementingField(field: string) : pSQL
+
+    beginTransaction(): Promise<boolean>
+    rollback(commitErr?:any | undefined): Promise<boolean>
+    commit(): Promise<boolean>
     
     fetch(): Promise<SQLResult>
     stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void>
