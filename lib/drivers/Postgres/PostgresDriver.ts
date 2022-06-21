@@ -9,6 +9,7 @@ import Comparator from "./../../types/Comparator";
 import iSQL from "./../../interfaces/iSQL";
 import SQLResult from "./../../classes/SQLResult";
 import reservedWords from "./reservedWords";
+import iPagination from "./../../interfaces/iPagination";
 
 const  QueryStream = require('pg-query-stream');
 
@@ -449,6 +450,29 @@ export default class PostgresDriver implements iSQL {
     public group(groupFields:string[]): PostgresDriver {
         this.queryOptions.groupFields = groupFields;
         return this;
+    }
+
+    public async count(): Promise<number> {
+        var sql = new PostgresDriver(this.configName, this.config);
+        sql.table(this,"count_sql");
+        sql.cols(["COUNT(*) num"]);
+        const result = await sql.fetch().catch(err=>{
+            throw err;
+        });
+        if(!result || result.rows.length === 0) return 0;
+
+        return result.rows[0];
+    }
+
+    public async paginate(perPage: number, page: number): Promise<iPagination> {
+        const numberOfRecords = await this.count().catch(err=>{
+            throw err;
+        });
+        this.limit(perPage);
+        this.offset( perPage * (page - 1) );
+        return {
+            total_rows: numberOfRecords
+        };
     }
 
     private addJoin(type: string, table : string | PostgresDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined):void {

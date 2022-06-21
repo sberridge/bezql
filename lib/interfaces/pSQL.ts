@@ -2,6 +2,7 @@ import Comparator from "../types/Comparator";
 import SQLResult from "../classes/SQLResult";
 import WeightedCondition from "../classes/WeightedCondition";
 import QueryConstraints from "../classes/QueryConstraints";
+import iPagination from "./iPagination";
 
 interface pSQL {
 
@@ -66,6 +67,10 @@ interface pSQL {
     order(field:string,direction: "ASC" | "DESC"): pSQL
 
     group(groupFields:string[]): pSQL
+
+    count() : Promise<number> 
+
+    paginate(perPage: number, page: number): Promise<iPagination>
 
 
 

@@ -9,6 +9,7 @@ import Comparator from "./../../types/Comparator";
 import CRUDOperation from "./../../types/CRUDOperation";
 import Event from "./../../types/Event";
 import reservedWords from "./reservedWords";
+import iPagination from "./../../interfaces/iPagination";
 
 export default class MySQLDriver implements iSQL {
 
@@ -396,6 +397,29 @@ export default class MySQLDriver implements iSQL {
     public group(groupFields:string[]): MySQLDriver {
         this.queryOptions.groupFields = groupFields;
         return this;
+    }
+
+    public async count(): Promise<number> {
+        var sql = new MySQLDriver(this.configName, this.config);
+        sql.table(this,"count_sql");
+        sql.cols(["COUNT(*) num"]);
+        const result = await sql.fetch().catch(err=>{
+            throw err;
+        });
+        if(!result || result.rows.length === 0) return 0;
+
+        return result.rows[0];
+    }
+
+    public async paginate(perPage: number, page: number): Promise<iPagination> {
+        const numberOfRecords = await this.count().catch(err=>{
+            throw err;
+        });
+        this.limit(perPage);
+        this.offset( perPage * (page - 1) );
+        return {
+            total_rows: numberOfRecords
+        };
     }
 
     private addJoin(type: string, table : string | MySQLDriver, arg2 : string | ((q: QueryConstraints)=>QueryConstraints), arg3 : string | ((q: QueryConstraints)=>QueryConstraints) | undefined = undefined, arg4 : string | undefined = undefined):void {

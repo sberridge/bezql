@@ -200,6 +200,38 @@ await query.stream(10, async (results)=>{
 });
 ```
 
+### Count Records
+
+You can quickly fetch a count of the number of records which will be returned in a query using the count method.
+
+```typescript
+const query = bezql.startQuery("my_db");
+query.table("users");
+query.where("active", "=", 1, true);
+const numberOfRecords = await query.count().catch(error=>{
+    //log error
+});
+```
+
+### Pagination
+
+Pagination of records can be handled easily using the paginate method.
+
+```typescript
+const query = bezql.startQuery("my_db");
+query.table("users");
+query.where("active", "=", 1, true);
+
+const perPage = 10;
+const currentPage = 1;
+const paginationInfo = await q.paginate(perPage,currentPage).catch(error=>{
+    //log error
+});
+
+const totalRows = paginationInfo.total_rows;
+const totalPages = Math.ceil(totalRows / perPage);
+```
+
 ## Inserting Records
 
 Records can be inserted using the insert and save methods.
