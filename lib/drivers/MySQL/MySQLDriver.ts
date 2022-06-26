@@ -242,6 +242,46 @@ export default class MySQLDriver implements iSQL {
         return "if(" + ifThis + ', ' + thenVal + ', ' + elseVal + ")";
     }
 
+    private applyWeightedConditions() {
+        let newParams:any[] = [];
+        if(this.queryOptions.weightedConditions.length > 0) {
+            let weightedConditionQueries = this.queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
+                return condition.applyCondition(this,newParams,[]);
+            });
+            this.queryOptions.selectColumns.push(weightedConditionQueries.join(' + ') + ' __condition_weight__');
+            this.queryOptions.ordering.unshift({
+                'field': '__condition_weight__',
+                'direction': "DESC"
+            });
+        }
+        return newParams;
+    }
+
+    private applySubStatement(): [string, any[]] {
+        if(!this.queryOptions.subStatement) {
+            return ["",[]]
+        }
+        const newParams: any[] = [];
+        const query = `(${this.queryOptions.subStatement[0].generateSelect()}) ${this.queryOptions.subStatement[1]} `;
+        this.queryOptions.subStatement[0].getParams().forEach(function(param) {
+            newParams.push(param);
+        });
+        return [query, newParams];
+    }
+
+    private applyJoins(): [string, any[]] {
+        const newParams:any[] = [];
+        const joinStrings:string[] = [];
+        this.queryOptions.joins.forEach(function(join : any) {
+            join.params.forEach((param:any)=>{
+                newParams.push(param);
+            });
+            joinStrings.push(` ${join.type} ${join.table} ON ${(join.query.applyWheres(newParams,[]))} `);
+        });
+        
+        return [joinStrings.join(" "), newParams];
+    }
+
     public generateSelect() {
         
         const queryOptions = this.queryOptions;
@@ -249,62 +289,48 @@ export default class MySQLDriver implements iSQL {
             throw "No table selected";
         }
         const params:any[] = [];
-        let query = "SELECT ";
-        
 
-        if(queryOptions.weightedConditions.length > 0) {
-            let weightedConditionQueries = queryOptions.weightedConditions.map((condition:WeightedCondition)=>{
-                return condition.applyCondition(this,params,[]);
-            });
-            queryOptions.selectColumns.push(weightedConditionQueries.join(' + ') + ' __condition_weight__');
-            queryOptions.ordering.unshift({
-                'field': '__condition_weight__',
-                'direction': "DESC"
-            });
-        }
+        params.push(...this.applyWeightedConditions())
 
-        query += queryOptions.selectColumns.join(",");
-
-        query += " FROM ";
+        let query = `SELECT ${queryOptions.selectColumns.join(",")} FROM `;
 
         if(queryOptions.subStatement) {
-            query += `(${queryOptions.subStatement[0].generateSelect()}) ${queryOptions.subStatement[1]} `;
-            queryOptions.subStatement[0].getParams().forEach(function(param) {
-                params.push(param);
-            });
+            let [subQuery, subParams] = this.applySubStatement();
+            query += subQuery;
+            params.push(...subParams);            
         } else {
-            query += " " + queryOptions.tableName + " ";
+            query += ` ${queryOptions.tableName} `;
         }
 
-        queryOptions.joins.forEach(function(join : any) {
-            join.params.forEach((param:any)=>{
-                params.push(param);
-            });
-            query += " " + join.type + " " + " " + join.table + " ON " + (join.query.applyWheres(params,[]));
-        });
+        const [joinString, joinParams] = this.applyJoins();
+
+        query += joinString;
+        params.push(...joinParams);
+
+        
         if(queryOptions.queryConstraints.getWheres().length > 0) {
-            query += " WHERE " + (queryOptions.queryConstraints.applyWheres(params,[])) + " ";
+            query += ` WHERE ${(queryOptions.queryConstraints.applyWheres(params,[]))} `;
         }                
         queryOptions.params = params;
 
         if(typeof queryOptions.groupFields != "undefined" && queryOptions.groupFields.length > 0) {
-            query += " GROUP BY " + queryOptions.groupFields.join(",");
+            query += ` GROUP BY ${queryOptions.groupFields.join(",")} `;
         }
 
         if(queryOptions.ordering.length > 0) {
             query += " ORDER BY ";
             let orders = queryOptions.ordering.map((val)=>{
-                return this.escape(val['field']) + " " + val["direction"];
+                return ` ${this.escape(val['field'])} ${val["direction"]} `;
             });
             query += orders.join(",");
         }        
 
         if(typeof queryOptions.limitAmount != "undefined") {
-            query += " LIMIT " + queryOptions.limitAmount + " ";
+            query += ` LIMIT ${queryOptions.limitAmount} `;
         }
 
         if(typeof queryOptions.offsetAmount != "undefined") {
-            query += " OFFSET " + queryOptions.offsetAmount + " ";
+            query += ` OFFSET ${queryOptions.offsetAmount} `;
         }
 
         return query;
