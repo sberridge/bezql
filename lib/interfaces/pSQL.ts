@@ -19,6 +19,8 @@ interface pSQL {
     beginTransaction(): Promise<boolean>
     rollback(commitErr?:any | undefined): Promise<boolean>
     commit(): Promise<boolean>
+
+    raw(query:string,params:any): Promise<SQLResult>
     
     fetch(): Promise<SQLResult>
     stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void>

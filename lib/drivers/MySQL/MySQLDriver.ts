@@ -139,6 +139,20 @@ export default class MySQLDriver implements iSQL {
         });        
     }
 
+    public raw(query: string, params: any): Promise<SQLResult> {
+        this.queryOptions.params = [];
+        if(typeof params !== "undefined") {
+            if(Array.isArray(params)){
+                params.forEach((param)=>{
+                    this.queryOptions.params?.push(param);
+                });
+            } else {
+                throw new Error("Must pass an array containing param values when running MySQL query");
+            }
+        }
+        return this.execute(query);
+    }
+
     public newQuery() {
         const query = new MySQLDriver(this.configName, this.config);
         if(this.transactionConnection) {
