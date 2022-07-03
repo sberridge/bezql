@@ -219,10 +219,6 @@ export default class PostgresDriver implements iSQL {
         return this.queryOptions.queryConstraints.getParamNum();
     }
 
-    private resetParamNum() {
-        this.queryOptions.queryConstraints.setParamNum(1);
-    }
-
     public setIncrementingField(field: string): PostgresDriver {
         this.queryOptions.incrementingField = this.escape(field);
         return this;
@@ -353,7 +349,6 @@ export default class PostgresDriver implements iSQL {
         if(typeof queryOptions.offsetAmount != "undefined") {
             query += ` OFFSET ${queryOptions.offsetAmount} `;
         }
-        this.resetParamNum();
         return query;
     }
 
@@ -714,7 +709,6 @@ export default class PostgresDriver implements iSQL {
             query += ` returning ${this.queryOptions.incrementingField}`;
         }
 
-        this.resetParamNum();
         return query;
     }
 
@@ -745,7 +739,6 @@ export default class PostgresDriver implements iSQL {
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += " WHERE " + (this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params ?? [],[])) + " ";
         }
-        this.resetParamNum();
         return query;
     }
 
@@ -782,7 +775,6 @@ export default class PostgresDriver implements iSQL {
         if(this.queryOptions.queryConstraints.getWheres().length > 0) {
             query += ` WHERE ${(this.queryOptions.queryConstraints.applyWheres(this.queryOptions.params,[]))} `;
         }
-        this.resetParamNum();
         return query;
     }
 

@@ -15,7 +15,7 @@ export const addConfig = (name:string, config:ConnectionConfig) => {
 export const startQuery = (configName:string) => {
     const q = Factory.getInstance().generateConnection(configName);
     if(q) {        
-        return q as pSQL;
+        return q;
     }
     return null;
 }

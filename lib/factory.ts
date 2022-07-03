@@ -4,6 +4,8 @@ import PostgresDriver from "./drivers/Postgres/PostgresDriver";
 import iSQL from "./interfaces/iSQL";
 import CRUDOperation from "./types/CRUDOperation";
 import Event from "./types/Event";
+import DBConnection from "./classes/DBConnection";
+import pSQL from "./interfaces/pSQL";
 
 export default class Factory {
     private static instance: Factory | undefined;
@@ -38,7 +40,7 @@ export default class Factory {
         return config;
     }
 
-    public generateConnection(configKey : string): iSQL | null {
+    private createDriver(configKey: string) {
         const config = this.getConnectionConfig(configKey);
         if(!config) {
             return null;
@@ -57,10 +59,15 @@ export default class Factory {
         const events = this.configEvents.get(configKey);
         if(events) {
             handler?.addEvents(events);
-        }       
-
-
+        }
         return handler;
+    }
+
+    public generateConnection(configKey : string): pSQL | null {               
+        const handler = this.createDriver(configKey);
+        if(!handler) return null;
+        const connection = new DBConnection(handler);
+        return connection;
     }
 
     public async addConfig(name:string,config:ConnectionConfig) {
@@ -85,9 +92,9 @@ export default class Factory {
     }
 
     public async removeConfig(name:string) {
-        const connection = this.generateConnection(name);
-        if(connection) {
-            await connection.closePool(name);
+        const driver = this.createDriver(name);
+        if(driver) {
+            await driver.closePool(name);
         }
         this.config.delete(name);
         this.configEvents.delete(name);

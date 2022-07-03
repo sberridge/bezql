@@ -82,12 +82,14 @@ describe("Factory for building SQL connections and query builders from configs",
     it("Should generate a MySQL connection",()=>{
         const factory = addTestConfig("mysql_contest");
         const connection = factory.generateConnection("mysql_contest");
-        expect(connection).toBeInstanceOf(MySQLDriver);
+        if(!connection) return;
+        expect(connection["dbHandler"]).toBeInstanceOf(MySQLDriver);
     })
     
     it("Should generate a Postgres connection",()=>{
         const factory = addTestConfig("post_contest", "Postgres");
         const connection = factory.generateConnection("post_contest");
-        expect(connection).toBeInstanceOf(PostgresDriver);
+        if(!connection) return;
+        expect(connection["dbHandler"]).toBeInstanceOf(PostgresDriver);
     })
 })
