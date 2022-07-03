@@ -10,6 +10,7 @@ import CRUDOperation from "./../../types/CRUDOperation";
 import Event from "./../../types/Event";
 import reservedWords from "./reservedWords";
 import iPagination from "./../../interfaces/iPagination";
+import DBConnection from "../../classes/DBConnection";
 
 export default class MySQLDriver implements iSQL {
 
@@ -225,6 +226,9 @@ export default class MySQLDriver implements iSQL {
         if(typeof tableName === "string") {
             this.queryOptions.tableName = this.escape(tableName);
         } else if(tableAlias) {
+            if(tableName instanceof DBConnection) {
+                tableName = tableName.getDBHandler() as MySQLDriver;
+            }
             this.queryOptions.subStatement = [tableName, tableAlias];
         }
         
@@ -363,6 +367,9 @@ export default class MySQLDriver implements iSQL {
         if(Array.isArray(values)) {
             this.queryOptions.queryConstraints.whereIn(field,values,escape);                
         } else {
+            if(values instanceof DBConnection) {
+                values = values.getDBHandler() as MySQLDriver;
+            }
             this.queryOptions.queryConstraints.whereIn(field,values);
         }        
         return this;
@@ -375,6 +382,9 @@ export default class MySQLDriver implements iSQL {
         if(Array.isArray(values)) {
             this.queryOptions.queryConstraints.whereNotIn(field,values,escape);                
         } else {
+            if(values instanceof DBConnection) {
+                values = values.getDBHandler() as MySQLDriver;
+            }
             this.queryOptions.queryConstraints.whereNotIn(field,values);
         }        
         return this;
@@ -472,6 +482,9 @@ export default class MySQLDriver implements iSQL {
             primaryKey = arg2;
             foreignKey = <string>arg3;
         } else {
+            if(table instanceof DBConnection) {
+                table = table.getDBHandler() as MySQLDriver;
+            }
             tableName = "(" + table.generateSelect() + ") " + arg2 + " ";
             primaryKey = arg3;
             foreignKey = arg4;

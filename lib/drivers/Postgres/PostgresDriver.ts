@@ -10,6 +10,7 @@ import iSQL from "./../../interfaces/iSQL";
 import SQLResult from "./../../classes/SQLResult";
 import reservedWords from "./reservedWords";
 import iPagination from "./../../interfaces/iPagination";
+import DBConnection from "../../classes/DBConnection";
 
 const  QueryStream = require('pg-query-stream');
 
@@ -230,6 +231,9 @@ export default class PostgresDriver implements iSQL {
         if(typeof tableName === "string") {
             this.queryOptions.tableName = this.escape(tableName);
         } else if(tableAlias) {
+            if(tableName instanceof DBConnection) {
+                tableName = tableName.getDBHandler() as PostgresDriver;
+            }
             this.queryOptions.subStatement = [tableName, tableAlias];
         }
         
@@ -380,6 +384,9 @@ export default class PostgresDriver implements iSQL {
         if(Array.isArray(values)) {
             this.queryOptions.queryConstraints.whereIn(field,values,escape);                
         } else {
+            if(values instanceof DBConnection) {
+                values = values.getDBHandler() as PostgresDriver;
+            }
             this.queryOptions.queryConstraints.whereIn(field,values);
         }        
         return this;
@@ -392,6 +399,9 @@ export default class PostgresDriver implements iSQL {
         if(Array.isArray(values)) {
             this.queryOptions.queryConstraints.whereNotIn(field,values,escape);                
         } else {
+            if(values instanceof DBConnection) {
+                values = values.getDBHandler() as PostgresDriver;
+            }
             this.queryOptions.queryConstraints.whereNotIn(field,values);
         }        
         return this;
@@ -498,6 +508,9 @@ export default class PostgresDriver implements iSQL {
                     primaryKey = arg2;
                     foreignKey = <string>arg3;
                 } else {
+                    if(table instanceof DBConnection) {
+                        table = table.getDBHandler() as PostgresDriver;
+                    }
                     table.increaseParamNum(this.getParamNum()-1);
                     let startParamNum = table.getParamNum();
                     tableName = "(" + table.generateSelect() + ") " + arg2 + " ";

@@ -4,14 +4,19 @@ import pSQL from "../interfaces/pSQL";
 import QueryConstraints from "./QueryConstraints";
 import SQLResult from "./SQLResult";
 import WeightedCondition from "./WeightedCondition";
+import iSQL from "../interfaces/iSQL";
 
 export default class DBConnection implements pSQL {
-    private dbHandler:pSQL;
+    private dbHandler:iSQL;
     private selectColumns: string[] = ["*"];
     private additionalColumns: string[] = [];
 
-    public constructor(connection:pSQL) {
+    public constructor(connection:iSQL) {
         this.dbHandler = connection;
+    }
+
+    public getDBHandler() {
+        return this.dbHandler;
     }
 
     public beginTransaction(): Promise<boolean> {
@@ -31,7 +36,7 @@ export default class DBConnection implements pSQL {
     }
 
     public newQuery(): pSQL {
-        return this.dbHandler.newQuery();
+        return new DBConnection(this.dbHandler.newQuery() as iSQL);
     }
 
     public table(tableName: pSQL, tableAlias: string): pSQL;

@@ -376,7 +376,6 @@ bezql.addEventListener("test", "before", "SELECT", async (event)=>{
 bezql.addEventListener("test", "before", "UPDATE", async (event)=>{
     
     const connection = event.connection;
-    await connection.fetch(); //fetch the rows that will be updated
 
     //return false to cancel the query
     return false;
