@@ -9,7 +9,6 @@ import iSQL from "../interfaces/iSQL";
 export default class DBConnection implements pSQL {
     private dbHandler:iSQL;
     private selectColumns: string[] = ["*"];
-    private additionalColumns: string[] = [];
 
     public constructor(connection:iSQL) {
         this.dbHandler = connection;
@@ -58,8 +57,6 @@ export default class DBConnection implements pSQL {
 
     public addCol(column:string) : pSQL {
         this.selectColumns.push(column);
-        var colSplit = column.split(/ |\./);
-        this.additionalColumns.push(colSplit[colSplit.length-1]);
         return this;
     }
     
