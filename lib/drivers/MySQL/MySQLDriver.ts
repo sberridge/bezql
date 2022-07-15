@@ -140,7 +140,7 @@ export default class MySQLDriver implements iSQL {
         });        
     }
 
-    public raw(query: string, params: any): Promise<SQLResult> {
+    public raw<TResult>(query: string, params: any): Promise<SQLResult<TResult>> {
         this.queryOptions.params = [];
         if(typeof params !== "undefined") {
             if(Array.isArray(params)){
@@ -151,7 +151,7 @@ export default class MySQLDriver implements iSQL {
                 throw new Error("Must pass an array containing param values when running MySQL query");
             }
         }
-        return this.execute(query);
+        return this.execute<TResult>(query);
     }
 
     public newQuery() {
@@ -453,12 +453,12 @@ export default class MySQLDriver implements iSQL {
         var sql = new MySQLDriver(this.configName, this.config);
         sql.table(this,"count_sql");
         sql.cols(["COUNT(*) num"]);
-        const result = await sql.fetch().catch(err=>{
+        const result = await sql.fetch<{num:number}>().catch(err=>{
             throw err;
         });
         if(!result || result.rows.length === 0) return 0;
 
-        return result.rows[0];
+        return result.rows[0].num;
     }
 
     public async paginate(perPage: number, page: number): Promise<iPagination> {
@@ -523,15 +523,15 @@ export default class MySQLDriver implements iSQL {
         return this;
     }
 
-    public async fetch() {
+    public async fetch<TResult>() {
         this.queryOptions.type = "SELECT";
         const query = this.generateSelect();
-        return await this.execute(query).catch(err=>{
+        return await this.execute<TResult>(query).catch(err=>{
             throw err;
         });
     }
 
-    public stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void> {
+    public stream<TResult>(num : number, callback : (results:TResult[])=>Promise<boolean>): Promise<void> {
         return new Promise(async (resolve,reject)=>{
             const query = this.generateSelect();
             const shouldContinue = await this.triggerBeforeEvents(query);
@@ -546,7 +546,7 @@ export default class MySQLDriver implements iSQL {
             if(!connection) {
                 return;
             }
-            let results:any[] = [];
+            let results:TResult[] = [];
             
 
             
@@ -694,7 +694,7 @@ export default class MySQLDriver implements iSQL {
         return query;
     }
 
-    public async save() : Promise<SQLResult> {
+    public async save() : Promise<SQLResult<any>> {
         switch(this.queryOptions.type) {
             case "INSERT":
                 return await this.execute(this.generateInsert()).catch(err=>{
@@ -713,7 +713,7 @@ export default class MySQLDriver implements iSQL {
 
 
 
-    public async delete(): Promise<SQLResult> {
+    public async delete(): Promise<SQLResult<any>> {
         this.queryOptions.type = "DELETE";
         return await this.execute(this.generateDelete()).catch(err=>{
             throw err;
@@ -759,7 +759,7 @@ export default class MySQLDriver implements iSQL {
         return shouldContinue;
     }
 
-    private triggerAfterEvents(query:string, result:SQLResult) {
+    private triggerAfterEvents(query:string, result:SQLResult<any>) {
         const afterEvents = this.events?.get("after")?.get(this.queryOptions.type);
         if(this.eventsSuppressed) {
             return;
@@ -782,7 +782,7 @@ export default class MySQLDriver implements iSQL {
 
 
 
-    public execute(query : string): Promise<SQLResult> {
+    public execute<TResult>(query : string): Promise<SQLResult<TResult>> {
         return new Promise(async (resolve,reject)=>{
 
             const shouldContinue = await this.triggerBeforeEvents(query);
@@ -798,7 +798,7 @@ export default class MySQLDriver implements iSQL {
             }
 
             connection.query(query,this.queryOptions.params,(error,results,fields)=>{
-                let result = new SQLResult();
+                let result = new SQLResult<TResult>();
 
                 if(!this.transactionConnection) {
                     connection.release();
@@ -813,7 +813,7 @@ export default class MySQLDriver implements iSQL {
                     result.rows_changed = results.changedRows;
                     result.insert_id = results.insertId;
                 } else {
-                    result.rows = results;
+                    result.rows = results as TResult[];
                 }
                 
                 this.triggerAfterEvents(query, result);

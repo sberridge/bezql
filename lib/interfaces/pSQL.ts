@@ -20,10 +20,10 @@ interface pSQL {
     rollback(commitErr?:any | undefined): Promise<boolean>
     commit(): Promise<boolean>
 
-    raw(query:string,params:any): Promise<SQLResult>
+    raw<TResult>(query:string,params:any): Promise<SQLResult<TResult>>
     
-    fetch(): Promise<SQLResult>
-    stream(num : number, callback : (results:any[])=>Promise<boolean>): Promise<void>
+    fetch<TResult>(): Promise<SQLResult<TResult>>
+    stream<TResult>(num : number, callback : (results:TResult[])=>Promise<boolean>): Promise<void>
 
     limit(limitAmount: number) : pSQL
     offset(offsetAmount: number) : pSQL
@@ -80,9 +80,9 @@ interface pSQL {
     insert(columnValues : {[key:string]:any}, escape : boolean) : pSQL
 
     update(columnValues : {[key:string]:any}, escape : boolean) : pSQL
-    save() : Promise<SQLResult>
+    save() : Promise<SQLResult<any>>
 
-    delete(): Promise<SQLResult>
+    delete(): Promise<SQLResult<any>>
 
 
 }

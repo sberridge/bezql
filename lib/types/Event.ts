@@ -6,7 +6,7 @@ type Event = {
     type: CRUDOperation
     table: string
     query: string
-    result: SQLResult | null,
+    result: SQLResult<any> | null,
     connection: pSQL
 }
 
