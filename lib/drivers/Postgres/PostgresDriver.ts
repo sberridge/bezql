@@ -143,7 +143,7 @@ export default class PostgresDriver implements iSQL {
         return this;
     }
 
-    public raw<TResult>(query:string,params:any): Promise<SQLResult<TResult>> {
+    public raw<TResult = any>(query:string,params:any): Promise<SQLResult<TResult>> {
         this.queryOptions.params = [];
         if(typeof params !== "undefined") {
             if(Array.isArray(params)){
@@ -564,7 +564,7 @@ export default class PostgresDriver implements iSQL {
         return this;
     }
 
-    public async fetch<TResult>() {
+    public async fetch<TResult = any>() {
         this.queryOptions.type = "SELECT";
         const query = this.generateSelect();
         return await this.execute<TResult>(query).catch(err=>{
@@ -572,7 +572,7 @@ export default class PostgresDriver implements iSQL {
         });
     }
 
-    public stream<TResult>(num : number, callback : (results:TResult[])=>Promise<boolean>): Promise<void> {
+    public stream<TResult = any>(num : number, callback : (results:TResult[])=>Promise<boolean>): Promise<void> {
         return new Promise(async (resolve,reject)=>{
 
             const queryString = this.generateSelect();

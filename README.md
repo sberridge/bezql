@@ -397,9 +397,13 @@ bezql.addEventListener("test", "before", "DELETE", async (event)=>{
 If you wish to bypass the query building altogether and run a raw query, then you can do so using the "raw" methods.
 
 ```typescript
+interface User {
+    id: number;
+    first_name: string;
+}
 const mysqlQuery = bezql.startQuery("mysql_db");
-const mysqlResult = await mysqlQuery.raw("SELECT * FROM users WHERE id IN (?, ?, ?)", [1, 2, 3]);
+const mysqlResult = await mysqlQuery.raw<User>("SELECT * FROM users WHERE id IN (?, ?, ?)", [1, 2, 3]);
 
 const postQuery = bezql.startQuery("postgres_db");
-const postResult = await postQuery.raw("SELECT * FROM users WHERE in IN ($1, $2, $3)", [1, 2, 3]);
+const postResult = await postQuery.raw<User>("SELECT * FROM users WHERE in IN ($1, $2, $3)", [1, 2, 3]);
 ```

@@ -30,7 +30,7 @@ export default class DBConnection implements pSQL {
         return this.dbHandler.rollback();
     }
 
-    public raw<TResult>(query: string, params: any): Promise<SQLResult<TResult>> {
+    public raw<TResult = any>(query: string, params: any): Promise<SQLResult<TResult>> {
         return this.dbHandler.raw(query, params);
     }
 
@@ -89,12 +89,12 @@ export default class DBConnection implements pSQL {
         return this;
     }
 
-    public fetch<TResult>(): Promise<SQLResult<TResult>> {        
+    public fetch<TResult = any>(): Promise<SQLResult<TResult>> {        
         this.dbHandler.cols(this.selectColumns);
         return this.dbHandler.fetch();
     }
 
-    public stream<TResult>(num: number, callback: (results: any[]) => Promise<boolean>): Promise<void> {
+    public stream<TResult = any>(num: number, callback: (results: any[]) => Promise<boolean>): Promise<void> {
         this.dbHandler.cols(this.selectColumns);
         return this.dbHandler.stream<TResult>(num, callback);
     }
