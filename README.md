@@ -2,6 +2,29 @@
 
 Package which handles SQL database connections as well as providing a query builder and executioner.
 
+## Change Log
+
+### 1.8.0
+
+Added optional generic typing to functions that return results, e.g.
+
+```typescript
+interface User {
+    id: number;
+    first_name: string;
+}
+const users = await bezql.table('users')
+                .cols([
+                    'id',
+                    'first_name'
+                ])
+                .fetch<User>();
+
+                .stream<User>(10, await (result)=>true);
+
+                .raw<User>('SELECT id, first_name FROM users', []);
+```
+
 ## Installation
 
 ```
@@ -58,6 +81,15 @@ query.cols(["first_name", "surname"]);
 query.fetch().then(results=>{
     console.log(results.rows);
 });
+```
+
+Optionally provide a type to shape the returned results.
+
+```typescript
+query.fetch<{
+    first_name: string;
+    surname: string;
+}>()
 ```
 
 ### Conditions
@@ -198,6 +230,12 @@ await query.stream(10, async (results)=>{
     //return true to get next set or false to exit the stream early
     return true
 });
+```
+
+Optionally provide a type to shape the returned results.
+
+```typescript
+query.stream<User>(10, async (results) => true);
 ```
 
 ### Count Records
@@ -397,13 +435,15 @@ bezql.addEventListener("test", "before", "DELETE", async (event)=>{
 If you wish to bypass the query building altogether and run a raw query, then you can do so using the "raw" methods.
 
 ```typescript
-interface User {
-    id: number;
-    first_name: string;
-}
 const mysqlQuery = bezql.startQuery("mysql_db");
-const mysqlResult = await mysqlQuery.raw<User>("SELECT * FROM users WHERE id IN (?, ?, ?)", [1, 2, 3]);
+const mysqlResult = await mysqlQuery.raw("SELECT * FROM users WHERE id IN (?, ?, ?)", [1, 2, 3]);
 
 const postQuery = bezql.startQuery("postgres_db");
-const postResult = await postQuery.raw<User>("SELECT * FROM users WHERE in IN ($1, $2, $3)", [1, 2, 3]);
+const postResult = await postQuery.raw("SELECT * FROM users WHERE in IN ($1, $2, $3)", [1, 2, 3]);
+```
+
+Optionally provide a type to shape the results returned by raw SELECT queries.
+
+```typescript
+query.raw<User>('SELECT id, first_name FROM users', []);
 ```
