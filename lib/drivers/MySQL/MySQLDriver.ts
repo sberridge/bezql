@@ -2,7 +2,7 @@ import SQLResult from "../../classes/SQLResult";
 import iSQL from "../../interfaces/iSQL";
 import ConnectionConfig from "../../types/ConnectionConfig";
 import QueryOptions from "./classes/QueryOptions";
-import * as mysql from 'mysql';
+import * as mysql from 'mysql2';
 import QueryConstraints from "../../classes/QueryConstraints";
 import WeightedCondition from "../../classes/WeightedCondition";
 import Comparator from "./../../types/Comparator";
@@ -37,7 +37,7 @@ export default class MySQLDriver implements iSQL {
     private connect() {
         let pool = MySQLDriver.pools.get(this.configName);
         if(!pool) {
-            let config:mysql.PoolConfig = {
+            let config:mysql.PoolOptions = {
                 connectionLimit: 100,
                 host: this.config.host,
                 user: this.config.user,
@@ -107,15 +107,12 @@ export default class MySQLDriver implements iSQL {
         });
     }
 
-    public rollback(commitError?:mysql.MysqlError | undefined): Promise<boolean> {
+    public rollback(commitError?:mysql.QueryError | undefined): Promise<boolean> {
         return new Promise((resolve,reject)=>{
             if(typeof this.transactionConnection === "undefined") {
                 return reject("No transaction in progress");
             }
-            this.transactionConnection.rollback((err)=>{
-                if(err) {
-                    return reject(err);
-                }
+            this.transactionConnection.rollback(() => {
                 this.transactionConnection?.release();
                 if(commitError) {
                     return reject(commitError);
@@ -555,8 +552,8 @@ export default class MySQLDriver implements iSQL {
                 .on('error', (err)=>{
                     reject(err);
                 })
-                .on('result',async (result) => {
-                    results.push(result);
+                .on('result',async (result: mysql.RowDataPacket) => {
+                    results.push(result as TResult);
                     if(results.length >= num) {
                         connection.pause();
                         const shouldContinue = await callback(results);
@@ -808,9 +805,9 @@ export default class MySQLDriver implements iSQL {
                     return reject(error);
                 }
                 let resultType = results.constructor.name;
-                if(resultType === 'OkPacket') {
+                if(!Array.isArray(results)) {
                     result.rows_affected = results.affectedRows;
-                    result.rows_changed = results.changedRows;
+                    result.rows_changed = results.changedRows ?? 0;
                     result.insert_id = results.insertId;
                 } else {
                     result.rows = results as TResult[];
