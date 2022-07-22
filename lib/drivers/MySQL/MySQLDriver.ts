@@ -544,10 +544,7 @@ export default class MySQLDriver implements iSQL {
                 return;
             }
             let results:TResult[] = [];
-            
 
-            
-            
             connection.query(query, this.queryOptions.params)
                 .on('error', (err)=>{
                     reject(err);
