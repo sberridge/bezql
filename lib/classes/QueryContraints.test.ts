@@ -25,7 +25,7 @@ const generateMockConnection = (type:SupportedDatabase):iSQL => {
                 "user": ""
             });
     }
-}
+};
 
 describe("QueryConstraints class managing query conditions", ()=>{
     it("Should instantiate with either named or unnamed parameters",()=>{
@@ -78,14 +78,14 @@ describe("QueryConstraints class managing query conditions", ()=>{
         constraints.where("name", "=", 1, true);
         constraints.where("name", ">" , 2, false);
         expect(constraints.applyWheres(params1,[])).toMatch(/ +name +\= +\? +AND +name +\> +2 +/);
-        expect(params1[0]).toEqual(1)
+        expect(params1[0]).toEqual(1);
 
         const params2: any[] = [];
         const namedParams:any[] = [];
         const namedConstraints = new QueryConstraints(true);
         namedConstraints.where("name", "=", 1, true);
         expect(namedConstraints.applyWheres(params2,namedParams)).toMatch(/ +name +\= +\@param0 +/);
-        expect(params2[0]).toEqual(1)
+        expect(params2[0]).toEqual(1);
         expect(namedParams[0]).toEqual("param0");        
     });
 
@@ -137,7 +137,7 @@ describe("QueryConstraints class managing query conditions", ()=>{
         postConstraints.whereIn("name", postQuery);
         expect(postConstraints.applyWheres(postParams,postParamNames)).toMatch(/ +name +IN +\(SELECT +name +FROM +users +WHERE +id +\= +\$1 +\) +/);
         expect(postParams[0]).toEqual(1);
-    })
+    });
     
     it("Should generate a where not in query",()=>{
         const params1:any[] = [];
@@ -172,7 +172,7 @@ describe("QueryConstraints class managing query conditions", ()=>{
         constraints.and();
         constraints.where("4","=",4,true);
 
-        expect(constraints.applyWheres([],[])).toMatch(/ +1 +\= +\? +OR +2 +\= +\? +OR +3 +\= +\? +AND +4 +\= +\? +/)
+        expect(constraints.applyWheres([],[])).toMatch(/ +1 +\= +\? +OR +2 +\= +\? +OR +3 +\= +\? +AND +4 +\= +\? +/);
     });
 
     it("Should open and close brackets", ()=>{
@@ -181,6 +181,6 @@ describe("QueryConstraints class managing query conditions", ()=>{
         constraints.openBracket();
         constraints.closeBracket();
         constraints.closeBracket();
-        expect(constraints.applyWheres([],[])).toMatch(/ +\( +\( +\) +\) +/)
-    })
-})
+        expect(constraints.applyWheres([],[])).toMatch(/ +\( +\( +\) +\) +/);
+    });
+});

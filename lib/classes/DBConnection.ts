@@ -134,7 +134,7 @@ export default class DBConnection implements pSQL {
 
     public whereIn(field: string, subQuery: pSQL): pSQL;
     public whereIn(field: string, values: any[], escape: boolean): pSQL;
-    public whereIn(field: string, values: pSQL | any[], escape: boolean = true): pSQL {
+    public whereIn(field: string, values: pSQL | any[], escape = true): pSQL {
         if(Array.isArray(values)) {
             this.dbHandler.whereIn(field, values, escape);
         } else {
@@ -145,7 +145,7 @@ export default class DBConnection implements pSQL {
 
     public whereNotIn(field: string, subQuery: pSQL): pSQL
     public whereNotIn(field: string, values: any[], escape: boolean): pSQL
-    public whereNotIn(field: string, values: pSQL | any[], escape: boolean = true): pSQL {
+    public whereNotIn(field: string, values: pSQL | any[], escape = true): pSQL {
         if(Array.isArray(values)) {
             this.dbHandler.whereNotIn(field, values, escape);
         } else {
@@ -176,7 +176,7 @@ export default class DBConnection implements pSQL {
 
     public subWeightedWhere(field: string, comparator: Comparator, value: any, weight: number, nonMatchWeight: WeightedCondition, escape: boolean): WeightedCondition;
     public subWeightedWhere(field: string, comparator: Comparator, value: any, weight: number, nonMatchWeight: number, escape: boolean): WeightedCondition;
-    public subWeightedWhere(field: string, comparator: Comparator, value: any, weight: number, nonMatchWeight: number | WeightedCondition, escape: boolean = true): WeightedCondition {
+    public subWeightedWhere(field: string, comparator: Comparator, value: any, weight: number, nonMatchWeight: number | WeightedCondition, escape = true): WeightedCondition {
         if(typeof nonMatchWeight === "number") {
             return this.subWeightedWhere(field, comparator, value, weight, nonMatchWeight, escape);
         } else {
@@ -245,7 +245,7 @@ export default class DBConnection implements pSQL {
 
     public insert(columnValues: { [key: string]: any; }[], escape: boolean): pSQL;
     public insert(columnValues: { [key: string]: any; }, escape: boolean): pSQL;
-    public insert(columnValues : {[key:string]:any}[] | {[key:string]:any}, escape : boolean = true) : pSQL {            
+    public insert(columnValues : {[key:string]:any}[] | {[key:string]:any}, escape = true) : pSQL {            
         this.dbHandler.insert(columnValues, escape);
         return this;
     }

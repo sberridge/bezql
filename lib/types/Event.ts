@@ -1,13 +1,13 @@
-import pSQL from "./../interfaces/pSQL"
-import SQLResult from "./../classes/SQLResult"
-import CRUDOperation from "./CRUDOperation"
+import pSQL from "./../interfaces/pSQL";
+import SQLResult from "./../classes/SQLResult";
+import CRUDOperation from "./CRUDOperation";
 
 type Event = {
-    type: CRUDOperation
-    table: string
-    query: string
-    result: SQLResult<any> | null,
-    connection: pSQL
-}
+    type: CRUDOperation;
+    table: string;
+    query: string;
+    result: SQLResult<any> | null;
+    connection: pSQL;
+};
 
 export default Event;

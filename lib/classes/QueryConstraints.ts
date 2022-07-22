@@ -1,5 +1,5 @@
-import iSQL from '../interfaces/iSQL';
-import Comparator from '../types/Comparator';
+import iSQL from "../interfaces/iSQL";
+import Comparator from "../types/Comparator";
 type whereDetails = {
     type: "where" | "logic" | "bracket"
     func?: (...args:any[])=>whereDetails
@@ -17,9 +17,9 @@ export default class QueryConstraints {
 
     private wheres : whereDetails[] = [];
     private namedParams: boolean;
-    private namedParamNum: number = 0;
-    private namedParamPrefix: string = "param";
-    private namedParamSymbol: string = '@';
+    private namedParamNum = 0;
+    private namedParamPrefix = "param";
+    private namedParamSymbol = "@";
 
     constructor(namedParams: boolean) {
         this.namedParams = namedParams;
@@ -53,12 +53,12 @@ export default class QueryConstraints {
         this.wheres = wheres;
     }
     
-    public where(field : string, comparator : Comparator, value : any, escape : boolean = true) : QueryConstraints {
+    public where(field : string, comparator : Comparator, value : any, escape = true) : QueryConstraints {
         
         this.wheres.push({
             type: "where",
-            func: (field : string, comparator : Comparator, value : any, escape : boolean = true)=>{
-                var details:whereDetails = {
+            func: (field : string, comparator : Comparator, value : any, escape = true)=>{
+                const details: whereDetails = {
                     type: "where",
                     field: field,
                     comparator: comparator,
@@ -66,7 +66,7 @@ export default class QueryConstraints {
                     escape: escape
                 };
                 if(escape) {
-                    details['namedParam'] = this.namedParamPrefix + (this.namedParamNum++).toString();
+                    details["namedParam"] = this.namedParamPrefix + (this.namedParamNum++).toString();
                 }
                 return details;
             },
@@ -80,7 +80,7 @@ export default class QueryConstraints {
         return this;
     }
     
-    public on(field : string, comparator : Comparator, value : any, escape : boolean = false) : QueryConstraints {
+    public on(field : string, comparator : Comparator, value : any, escape = false) : QueryConstraints {
         return this.where(field, comparator, value, escape);
     }
     
@@ -103,7 +103,7 @@ export default class QueryConstraints {
 
     public onNull = this.whereNull;
     
-    public whereNotNull(field : string) : QueryConstraints {
+    public whereNotNull(field: string) : QueryConstraints {
         this.wheres.push({
             type: "where",
             func: (field:string)=>{
@@ -123,17 +123,17 @@ export default class QueryConstraints {
     public onNotNull = this.whereNotNull;
 
     private generateWhereInFunc(type: "IN" | "NOT IN"): ((...args: any[]) => whereDetails) | undefined {
-        return (field:string, values: iSQL | any[], escape:boolean=true)=>{
-            var valueString : string;
-            var params:any[] = [];
-            var paramPrefixes:any[] = [];
+        return (field: string, values: iSQL | any[], escape = true)=>{
+            let valueString: string;
+            let params:any[] = [];
+            let paramPrefixes:any[] = [];
             if(Array.isArray(values)) {
                 if(!escape) {
                     valueString = ` (${values.join(",")}) `;
                 } else {
                     valueString = ` (${values.map(()=>{
                         if(this.namedParams) {
-                            var namedParam = this.namedParamPrefix + (this.namedParamNum++).toString();
+                            const namedParam = this.namedParamPrefix + (this.namedParamNum++).toString();
                             paramPrefixes.push(namedParam);
                             return this.namedParamSymbol + namedParam;
                         } else {
@@ -144,9 +144,9 @@ export default class QueryConstraints {
                 }
             } else {
                 values.increaseParamNum(this.getParamNum()-1);
-                let startParamNum = values.getParamNum();
+                const startParamNum = values.getParamNum();
                 valueString = " (" + values.generateSelect() + ") ";
-                let paramDif = values.getParamNum() - startParamNum;
+                const paramDif = values.getParamNum() - startParamNum;
                 this.increaseParamNum(paramDif);
                 params = values.getParams();
                 paramPrefixes = values.getParamNames();
@@ -165,7 +165,7 @@ export default class QueryConstraints {
 
     public whereIn(field : string, subQuery : iSQL) : QueryConstraints
     public whereIn(field : string, values : any[], escape : boolean) : QueryConstraints
-    public whereIn(field : string, values : iSQL | any[], escape : boolean = true) : QueryConstraints {
+    public whereIn(field : string, values : iSQL | any[], escape = true) : QueryConstraints {
         this.wheres.push({
             type: "where",
             func: this.generateWhereInFunc("IN"),
@@ -180,7 +180,7 @@ export default class QueryConstraints {
 
     public whereNotIn(field : string, subQuery : iSQL) : QueryConstraints
     public whereNotIn(field : string, values : any[], escape : boolean) : QueryConstraints
-    public whereNotIn(field : string, values : iSQL | any[], escape : boolean = true) : QueryConstraints {
+    public whereNotIn(field : string, values : iSQL | any[], escape = true) : QueryConstraints {
         this.wheres.push({
             type: "where",
             func: this.generateWhereInFunc("NOT IN"),
@@ -230,18 +230,18 @@ export default class QueryConstraints {
     }
 
     public applyWheres(params : any[], paramNames: any[]) : string {
-        var whereString = " ";
+        let whereString = " ";
         if(this.wheres.length == 0) {
             return whereString;
         }
-        var first = true;
-        var logic = "and";
+        let first = true;
+        let logic = "and";
         this.wheres.forEach((where,i)=> {
             switch(where.type) {
                 case "where":
                     if(!where.func || !where.args) return;
-                    let whereDetails = where.func(...where.args);
-                    if(!first && this.wheres[i-1]['type'] !== 'bracket') {
+                    const whereDetails = where.func(...where.args);
+                    if(!first && this.wheres[i-1]["type"] !== "bracket") {
                         whereString += ` ${logic.toUpperCase()} `;
                     }
                     first = false;
@@ -272,7 +272,7 @@ export default class QueryConstraints {
                     logic = where.value;
                     break;
                 case "bracket":
-                    if(where.value == '(' && !first) {
+                    if(where.value == "(" && !first) {
                         whereString += ` ${logic.toUpperCase()} `;
                     }
                     whereString += ` ${where.value} `;

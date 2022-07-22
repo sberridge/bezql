@@ -24,8 +24,8 @@ const generateDriver = (type:SupportedDatabase) => {
                 "type": "Postgres",
                 "user": ""
             });
-    };
-}
+    }
+};
 
 describe("WeightedCondition", () => {
     it("Should construct with query constraints, weight, and non match weight", ()=>{
@@ -86,8 +86,8 @@ describe("WeightedCondition", () => {
         const query = condition.applyCondition(driver, params, []);
         expect(query).toMatch(/if\( +field +\= +\? +, +10, +if\( +field2 +\= +\? +, +5, +0\)\)/);
         expect(params).toHaveLength(2);
-        expect(params[0]).toEqual(1)
-        expect(params[1]).toEqual(2)
+        expect(params[0]).toEqual(1);
+        expect(params[1]).toEqual(2);
     });
     
     it("Should apply the conditions and fill the parameters with a sub where (Postgres)", ()=>{
@@ -109,7 +109,7 @@ describe("WeightedCondition", () => {
         const query = condition.applyCondition(driver, params, []);
         expect(query).toMatch(/CASE +WHEN +field += +\$1 +THEN +10 +ELSE +CASE +WHEN +field2 +\= +\$2 +THEN +5 +ELSE +0 +END +END/);
         expect(params).toHaveLength(2);
-        expect(params[0]).toEqual(1)
-        expect(params[1]).toEqual(2)
+        expect(params[0]).toEqual(1);
+        expect(params[1]).toEqual(2);
     });
 });

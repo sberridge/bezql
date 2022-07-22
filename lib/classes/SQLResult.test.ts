@@ -9,7 +9,7 @@ describe("SQL Result", () => {
             "rows_changed",
             "rows"
         ].forEach((prop)=>{
-            expect(result).toHaveProperty(prop)
+            expect(result).toHaveProperty(prop);
             switch(prop) {
                 case "insert_id":
                 case "rows_affected":
@@ -20,6 +20,6 @@ describe("SQL Result", () => {
                     expect(Array.isArray(result[prop])).toBeTruthy();
                     break;
             }
-        })        
+        });   
     });
 });

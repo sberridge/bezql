@@ -9,8 +9,9 @@ interface pSQL {
     newQuery():pSQL
 
     table(tableName : pSQL, tableAlias : string) : pSQL
-    cols(columns : string[]) : pSQL
     table(tableName : string) : pSQL
+
+    cols(columns : string[]) : pSQL    
 
     suppressEvents(suppress:boolean): pSQL;
 
