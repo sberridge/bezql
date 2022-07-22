@@ -1,6 +1,6 @@
 {
   "name": "bezql",
-  "version": "1.0.0",
+  "version": "1.9.0",
   "description": "Module for managing SQL connections, generating, and running queries",
   "main": "index.js",
   "scripts": {

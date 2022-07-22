@@ -4,6 +4,10 @@ Package which handles SQL database connections as well as providing a query buil
 
 ## Change Log
 
+### 1.9.0
+
+Now using mysql2 over mysql.
+
 ### 1.8.0
 
 Added optional generic typing to functions that return results, e.g.
