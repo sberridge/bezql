@@ -480,14 +480,16 @@ export default class MySQLDriver implements iSQL {
             foreignKey = <string>arg3;
         } else {
             if(table instanceof DBConnection) {
+                const selectColumns = table.getSelectColumns();
                 table = table.getDBHandler() as MySQLDriver;
+                table.cols(selectColumns);
             }
             tableName = "(" + table.generateSelect() + ") " + arg2 + " ";
             primaryKey = arg3;
             foreignKey = arg4;
             params = table.getParams();
         }
-        let query = new QueryConstraints(false);
+        const query = new QueryConstraints(false);
         if(primaryKey && typeof primaryKey != "string") {
             primaryKey(query);
         } else if(typeof primaryKey == "string") {

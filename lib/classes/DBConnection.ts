@@ -38,6 +38,10 @@ export default class DBConnection implements pSQL {
         return new DBConnection(this.dbHandler.newQuery() as iSQL);
     }
 
+    public getSelectColumns() {
+        return [ ...this.selectColumns ];
+    }
+
     public table(tableName: pSQL, tableAlias: string): pSQL;
     public table(tableName: string): pSQL;
     public table(tableName: pSQL | string, tableAlias?: string | undefined): pSQL {
