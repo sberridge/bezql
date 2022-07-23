@@ -224,7 +224,9 @@ export default class MySQLDriver implements iSQL {
             this.queryOptions.tableName = this.escape(tableName);
         } else if(tableAlias) {
             if(tableName instanceof DBConnection) {
+                const selectColumns = tableName.getSelectColumns();
                 tableName = tableName.getDBHandler() as MySQLDriver;
+                tableName.cols(selectColumns);
             }
             this.queryOptions.subStatement = [tableName, tableAlias];
         }

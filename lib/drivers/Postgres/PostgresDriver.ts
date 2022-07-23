@@ -511,7 +511,9 @@ export default class PostgresDriver implements iSQL {
                     foreignKey = <string>arg3;
                 } else {
                     if(table instanceof DBConnection) {
+                        const selectColumns = table.getSelectColumns();
                         table = table.getDBHandler() as PostgresDriver;
+                        table.cols(selectColumns);
                     }
                     table.increaseParamNum(this.getParamNum()-1);
                     let startParamNum = table.getParamNum();
