@@ -235,7 +235,7 @@ export default class MySQLDriver implements iSQL {
     }
 
     public cols(selectColumns : string[]) : MySQLDriver {
-        this.queryOptions.selectColumns = selectColumns.map((col)=>{return this.escape.call(this,col)});       
+        this.queryOptions.selectColumns = selectColumns.map((col)=>{ return this.escape.call(this,col); });       
         return this;
     }
 
@@ -449,7 +449,7 @@ export default class MySQLDriver implements iSQL {
     }
 
     public async count(): Promise<number> {
-        var sql = new MySQLDriver(this.configName, this.config);
+        const sql = new MySQLDriver(this.configName, this.config);
         sql.table(this,"count_sql");
         sql.cols(["COUNT(*) num"]);
         const result = await sql.fetch<{num:number}>().catch(err=>{

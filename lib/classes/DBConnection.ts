@@ -124,10 +124,12 @@ export default class DBConnection implements pSQL {
     }
 
     public count(): Promise<number> {
+        this.dbHandler.cols(this.selectColumns);
         return this.dbHandler.count();
     }
 
     public paginate(perPage:number, page:number): Promise<iPagination> {
+        this.dbHandler.cols(this.selectColumns);
         return this.dbHandler.paginate(perPage, page);        
     }
 
